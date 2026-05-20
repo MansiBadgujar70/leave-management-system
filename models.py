@@ -29,7 +29,11 @@ class User(UserMixin, db.Model):
     username   = db.Column(db.String(80),  unique=True, nullable=False)
     email      = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    role       = db.Column(db.Enum('admin', 'employee'), nullable=False, default='employee')
+    role = db.Column(
+    db.Enum('admin', 'employee', name='role_enum'),
+    nullable=False,
+    default='employee'
+)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # One-to-one relationship: one user → one employee profile
@@ -93,14 +97,25 @@ class LeaveRequest(db.Model):
 
     leave_id      = db.Column(db.Integer, primary_key=True, autoincrement=True)
     employee_id   = db.Column(db.Integer, db.ForeignKey('employees.employee_id', ondelete='CASCADE'), nullable=False)
-    leave_type    = db.Column(db.Enum('Sick Leave', 'Casual Leave', 'Emergency Leave', 'Vacation Leave'),
-                              nullable=False)
+leave_type = db.Column(
+    db.Enum(
+        'Sick Leave',
+        'Casual Leave',
+        'Emergency Leave',
+        'Vacation Leave',
+        name='leave_type_enum'
+    ),
+    nullable=False
+)
     start_date    = db.Column(db.Date,    nullable=False)
     end_date      = db.Column(db.Date,    nullable=False)
     total_days    = db.Column(db.Integer, nullable=False)
     reason        = db.Column(db.Text,    nullable=False)
-    status        = db.Column(db.Enum('Pending', 'Approved', 'Rejected'),
-                              nullable=False, default='Pending')
+ status = db.Column(
+    db.Enum('Pending', 'Approved', 'Rejected', name='status_enum'),
+    nullable=False,
+    default='Pending'
+)
     admin_remarks = db.Column(db.Text,    nullable=True)
     applied_at    = db.Column(db.DateTime, default=datetime.utcnow)
 
