@@ -26,10 +26,7 @@ class Config:
     MYSQL_DB = 'leave_management_system'
 
     # SQLAlchemy database URI  (mysql+pymysql://user:password@host/dbname)
-    SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}"
-        f"@{MYSQL_HOST}/{MYSQL_DB}"
-    )
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
 
     # Disable modification tracking (saves memory)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
