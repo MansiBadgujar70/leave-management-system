@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- ════════════════════════════════════
+     EDIT EMPLOYEE PAGE
+     ════════════════════════════════════ -->
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('admin.manage_employees') }}">Employees</a></li>
+      <li class="breadcrumb-item active">Edit – {{ employee.full_name }}</li>
+    </ol>
+  </nav>
+  <h2 class="page-title">
+    <i class="bi bi-pencil-square me-2 text-primary"></i>Edit Employee
+  </h2>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card card-custom">
+      <div class="card-header-custom">
+        <div class="d-flex align-items-center gap-3">
+          <div class="employee-avatar lg">{{ employee.full_name[0] }}</div>
+          <div>
+            <h5 class="mb-0 fw-bold">{{ employee.full_name }}</h5>
+            <small class="text-muted">{{ employee.user.username }} · {{ employee.department }}</small>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.edit_employee', emp_id=employee.employee_id) }}">
+          {{ form.hidden_tag() }}
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Full Name *</label>
+              {{ form.full_name(class="form-control" + (" is-invalid" if form.full_name.errors else "")) }}
+              {% for e in form.full_name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Email *</label>
+              {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+              {% for e in form.email.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Department *</label>
+              {{ form.department(class="form-select" + (" is-invalid" if form.department.errors else "")) }}
+              {% for e in form.department.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Phone Number</label>
+              {{ form.phone_number(class="form-control" + (" is-invalid" if form.phone_number.errors else ""),
+                                   placeholder="Optional") }}
+              {% for e in form.phone_number.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Total Annual Leaves *</label>
+              {{ form.total_leaves(class="form-control" + (" is-invalid" if form.total_leaves.errors else "")) }}
+              {% for e in form.total_leaves.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+              <div class="form-text">Current remaining: <strong>{{ employee.remaining_leaves }}</strong> days</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Joining Date</label>
+              <input type="text" class="form-control" value="{{ employee.joining_date | dateformat }}" disabled />
+              <div class="form-text">Joining date cannot be changed.</div>
+            </div>
+
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save-fill me-1"></i>Save Changes
+            </button>
+            <a href="{{ url_for('admin.manage_employees') }}" class="btn btn-outline-secondary">
+              <i class="bi bi-x-circle me-1"></i>Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

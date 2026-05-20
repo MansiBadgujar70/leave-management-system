@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- ══════════════════════════════════════
+     VIEW LEAVE DETAIL (Admin)
+     ══════════════════════════════════════ -->
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('admin.manage_leaves') }}">Leave Requests</a></li>
+      <li class="breadcrumb-item active">Leave #{{ leave.leave_id }}</li>
+    </ol>
+  </nav>
+  <h2 class="page-title">
+    <i class="bi bi-file-earmark-text-fill me-2 text-primary"></i>Leave Request #{{ leave.leave_id }}
+  </h2>
+</div>
+
+<div class="row g-4">
+  <!-- Leave Info Card -->
+  <div class="col-lg-8">
+    <div class="card card-custom">
+      <div class="card-header-custom">
+        <h5 class="card-title-custom mb-0">Leave Details</h5>
+      </div>
+      <div class="card-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Employee</span>
+            <span class="detail-value fw-semibold">{{ leave.employee.full_name }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Department</span>
+            <span class="detail-value"><span class="badge dept-badge">{{ leave.employee.department }}</span></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Leave Type</span>
+            <span class="detail-value">
+              <span class="badge leave-type-badge leave-{{ leave.leave_type | replace(' ', '-') | lower }}">
+                {{ leave.leave_type }}
+              </span>
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+              <span class="status-badge status-{{ leave.status | lower }}">{{ leave.status }}</span>
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Start Date</span>
+            <span class="detail-value">{{ leave.start_date | dateformat }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">End Date</span>
+            <span class="detail-value">{{ leave.end_date | dateformat }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Total Days</span>
+            <span class="detail-value fw-bold text-primary">{{ leave.total_days }} day{{ 's' if leave.total_days > 1 }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Applied On</span>
+            <span class="detail-value text-muted">{{ leave.applied_at | dateformat }}</span>
+          </div>
+          <div class="detail-item" style="grid-column: span 2;">
+            <span class="detail-label">Reason</span>
+            <span class="detail-value">{{ leave.reason }}</span>
+          </div>
+          {% if leave.admin_remarks %}
+          <div class="detail-item" style="grid-column: span 2;">
+            <span class="detail-label">Admin Remarks</span>
+            <span class="detail-value fst-italic text-muted">{{ leave.admin_remarks }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions Card -->
+  <div class="col-lg-4">
+    <div class="card card-custom">
+      <div class="card-header-custom">
+        <h5 class="card-title-custom mb-0">Actions</h5>
+      </div>
+      <div class="card-body">
+        {% if leave.status == 'Pending' %}
+          <!-- Approve Form -->
+          <form method="POST" action="{{ url_for('admin.approve_leave', leave_id=leave.leave_id) }}">
+            {{ form.hidden_tag() }}
+            <label class="form-label fw-semibold">Remarks (optional)</label>
+            <textarea name="admin_remarks" class="form-control mb-3" rows="3"
+                      placeholder="Add a comment for the employee…"></textarea>
+            <button type="submit" class="btn btn-success w-100 mb-2"
+                    onclick="return confirm('Approve this leave?')">
+              <i class="bi bi-check-circle-fill me-2"></i>Approve Leave
+            </button>
+          </form>
+          <form method="POST" action="{{ url_for('admin.reject_leave', leave_id=leave.leave_id) }}">
+            {{ form.hidden_tag() }}
+            <label class="form-label fw-semibold">Rejection Reason</label>
+            <textarea name="admin_remarks" class="form-control mb-3" rows="3"
+                      placeholder="Why is this being rejected?"></textarea>
+            <button type="submit" class="btn btn-danger w-100"
+                    onclick="return confirm('Reject this leave?')">
+              <i class="bi bi-x-circle-fill me-2"></i>Reject Leave
+            </button>
+          </form>
+
+        {% elif leave.status == 'Approved' %}
+          <div class="alert alert-success">
+            <i class="bi bi-check-circle-fill me-2"></i>This leave is <strong>Approved</strong>.
+          </div>
+          <form method="POST" action="{{ url_for('admin.reject_leave', leave_id=leave.leave_id) }}">
+            {{ form.hidden_tag() }}
+            <label class="form-label fw-semibold">Revoke Reason</label>
+            <textarea name="admin_remarks" class="form-control mb-3" rows="3"
+                      placeholder="Reason for revoking approval…"></textarea>
+            <button type="submit" class="btn btn-outline-danger w-100"
+                    onclick="return confirm('Revoke approval and reject this leave?')">
+              <i class="bi bi-arrow-counterclockwise me-2"></i>Revoke & Reject
+            </button>
+          </form>
+
+        {% else %}
+          <div class="alert alert-danger">
+            <i class="bi bi-x-circle-fill me-2"></i>This leave is <strong>Rejected</strong>.
+          </div>
+        {% endif %}
+
+        <hr />
+        <a href="{{ url_for('admin.manage_leaves') }}" class="btn btn-outline-secondary w-100">
+          <i class="bi bi-arrow-left me-1"></i>Back to List
+        </a>
+      </div>
+    </div>
+
+    <!-- Employee leave balance -->
+    <div class="card card-custom mt-4">
+      <div class="card-header-custom">
+        <h5 class="card-title-custom mb-0">Leave Balance</h5>
+      </div>
+      <div class="card-body text-center">
+        {% set emp = leave.employee %}
+        {% set pct = ((emp.remaining_leaves / emp.total_leaves) * 100) | int if emp.total_leaves > 0 else 0 %}
+        <div class="balance-circle">
+          <span class="balance-num">{{ emp.remaining_leaves }}</span>
+          <span class="balance-label">/ {{ emp.total_leaves }} days</span>
+        </div>
+        <div class="progress mt-3" style="height:10px;">
+          <div class="progress-bar
+            {% if pct > 50 %}bg-success{% elif pct > 20 %}bg-warning{% else %}bg-danger{% endif %}"
+            style="width:{{ pct }}%"></div>
+        </div>
+        <small class="text-muted mt-2 d-block">Remaining leave balance for {{ emp.full_name }}</small>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

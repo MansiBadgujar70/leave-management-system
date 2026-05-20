@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- ════════════════════════════════════════════
+     LEAVE HISTORY (Employee)
+     ════════════════════════════════════════════ -->
+
+<div class="page-header d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="page-title">
+      <i class="bi bi-clock-history me-2 text-primary"></i>Leave History
+    </h2>
+    <p class="page-subtitle text-muted">
+      All your leave applications — past and present.
+    </p>
+  </div>
+  <a href="{{ url_for('employee.apply_leave') }}" class="btn btn-primary">
+    <i class="bi bi-plus-circle-fill me-2"></i>Apply for Leave
+  </a>
+</div>
+
+<!-- ── STATUS FILTER TABS ──────────────────────────────────────────────────── -->
+<ul class="nav nav-pills mb-4 filter-tabs">
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'All' %}active{% endif %}"
+       href="{{ url_for('employee.leave_history', status='All') }}">
+      All ({{ employee.leave_requests.count() }})
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link pending-tab {% if status_filter == 'Pending' %}active{% endif %}"
+       href="{{ url_for('employee.leave_history', status='Pending') }}">
+      <i class="bi bi-hourglass-split me-1"></i>Pending
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link approved-tab {% if status_filter == 'Approved' %}active{% endif %}"
+       href="{{ url_for('employee.leave_history', status='Approved') }}">
+      <i class="bi bi-check-circle-fill me-1"></i>Approved
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link rejected-tab {% if status_filter == 'Rejected' %}active{% endif %}"
+       href="{{ url_for('employee.leave_history', status='Rejected') }}">
+      <i class="bi bi-x-circle-fill me-1"></i>Rejected
+    </a>
+  </li>
+</ul>
+
+<!-- ── LEAVE TABLE ────────────────────────────────────────────────────────── -->
+<div class="card card-custom">
+  <div class="card-body p-0">
+    {% if leaves %}
+    <div class="table-responsive">
+      <table class="table table-hover table-custom mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Leave Type</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Days</th>
+            <th>Reason</th>
+            <th>Applied On</th>
+            <th>Status</th>
+            <th>Remarks</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for leave in leaves %}
+          <tr>
+            <td class="text-muted fw-semibold">#{{ leave.leave_id }}</td>
+            <td>
+              <span class="badge leave-type-badge leave-{{ leave.leave_type | replace(' ', '-') | lower }}">
+                {{ leave.leave_type }}
+              </span>
+            </td>
+            <td class="small">{{ leave.start_date | dateformat }}</td>
+            <td class="small">{{ leave.end_date | dateformat }}</td>
+            <td><strong>{{ leave.total_days }}</strong></td>
+            <td class="small text-muted" style="max-width:150px;">
+              <span title="{{ leave.reason }}">
+                {{ leave.reason[:50] }}{% if leave.reason | length > 50 %}…{% endif %}
+              </span>
+            </td>
+            <td class="small text-muted">{{ leave.applied_at | dateformat }}</td>
+            <td>
+              <span class="status-badge status-{{ leave.status | lower }}">{{ leave.status }}</span>
+            </td>
+            <td class="small fst-italic text-muted">
+              {{ leave.admin_remarks or '—' }}
+            </td>
+            <td class="text-center">
+              {% if leave.status == 'Pending' %}
+              <form method="POST" action="{{ url_for('employee.cancel_leave', leave_id=leave.leave_id) }}"
+                    onsubmit="return confirm('Cancel this leave request?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel">
+                  <i class="bi bi-trash3"></i> Cancel
+                </button>
+              </form>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state py-5">
+      <i class="bi bi-calendar-x fs-1 text-muted"></i>
+      <p class="mt-2 text-muted">
+        No {{ status_filter | lower }} leave requests found.
+        {% if status_filter == 'All' %}
+          <a href="{{ url_for('employee.apply_leave') }}">Apply for leave</a> to get started.
+        {% endif %}
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

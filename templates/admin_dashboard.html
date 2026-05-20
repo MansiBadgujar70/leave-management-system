@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- ════════════════════════════════════════════════════════════════
+     ADMIN DASHBOARD
+     ════════════════════════════════════════════════════════════════ -->
+
+<div class="page-header mb-4">
+  <h2 class="page-title">
+    <i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard Overview
+  </h2>
+  <p class="page-subtitle text-muted">Welcome back, <strong>{{ current_user.username }}</strong>! Here's what's happening.</p>
+</div>
+
+<!-- ── STAT CARDS ──────────────────────────────────────────────────────────── -->
+<div class="row g-4 mb-4">
+
+  <div class="col-xl-3 col-md-6">
+    <div class="stat-card stat-card-primary">
+      <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
+      <div class="stat-info">
+        <p class="stat-label">Total Employees</p>
+        <h3 class="stat-value">{{ total_employees }}</h3>
+      </div>
+      <a href="{{ url_for('admin.manage_employees') }}" class="stat-link">
+        View All <i class="bi bi-arrow-right-short"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-md-6">
+    <div class="stat-card stat-card-warning">
+      <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+      <div class="stat-info">
+        <p class="stat-label">Pending Requests</p>
+        <h3 class="stat-value">{{ pending_leaves }}</h3>
+      </div>
+      <a href="{{ url_for('admin.manage_leaves', status='Pending') }}" class="stat-link">
+        Review <i class="bi bi-arrow-right-short"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-md-6">
+    <div class="stat-card stat-card-success">
+      <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
+      <div class="stat-info">
+        <p class="stat-label">Approved Leaves</p>
+        <h3 class="stat-value">{{ approved_leaves }}</h3>
+      </div>
+      <a href="{{ url_for('admin.manage_leaves', status='Approved') }}" class="stat-link">
+        View <i class="bi bi-arrow-right-short"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-md-6">
+    <div class="stat-card stat-card-danger">
+      <div class="stat-icon"><i class="bi bi-x-circle-fill"></i></div>
+      <div class="stat-info">
+        <p class="stat-label">Rejected Leaves</p>
+        <h3 class="stat-value">{{ rejected_leaves }}</h3>
+      </div>
+      <a href="{{ url_for('admin.manage_leaves', status='Rejected') }}" class="stat-link">
+        View <i class="bi bi-arrow-right-short"></i>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ── CHARTS ──────────────────────────────────────────────────────────────── -->
+<div class="row g-4 mb-4">
+
+  <!-- Leave Status Doughnut Chart -->
+  <div class="col-lg-5">
+    <div class="card card-custom h-100">
+      <div class="card-header-custom">
+        <h5 class="card-title-custom">
+          <i class="bi bi-pie-chart-fill me-2"></i>Leave Status Distribution
+        </h5>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="min-height:260px;">
+        <canvas id="leaveStatusChart" style="max-height:240px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Department Breakdown Bar Chart -->
+  <div class="col-lg-7">
+    <div class="card card-custom h-100">
+      <div class="card-header-custom">
+        <h5 class="card-title-custom">
+          <i class="bi bi-bar-chart-fill me-2"></i>Employees by Department
+        </h5>
+      </div>
+      <div class="card-body d-flex align-items-center" style="min-height:260px;">
+        <canvas id="deptChart" style="max-height:240px; width:100%;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── RECENT LEAVE REQUESTS TABLE ────────────────────────────────────────── -->
+<div class="card card-custom">
+  <div class="card-header-custom d-flex justify-content-between align-items-center">
+    <h5 class="card-title-custom mb-0">
+      <i class="bi bi-clock-history me-2"></i>Recent Leave Requests
+    </h5>
+    <a href="{{ url_for('admin.manage_leaves') }}" class="btn btn-primary btn-sm">
+      View All <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+  </div>
+  <div class="card-body p-0">
+    {% if recent_leaves %}
+    <div class="table-responsive">
+      <table class="table table-hover table-custom mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Leave Type</th>
+            <th>Duration</th>
+            <th>Applied On</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for leave in recent_leaves %}
+          <tr>
+            <td class="fw-semibold text-muted">#{{ leave.leave_id }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="mini-avatar">{{ leave.employee.full_name[0] }}</div>
+                <span class="fw-semibold">{{ leave.employee.full_name }}</span>
+              </div>
+            </td>
+            <td><span class="badge dept-badge">{{ leave.employee.department }}</span></td>
+            <td>{{ leave.leave_type }}</td>
+            <td>
+              <small>{{ leave.start_date | dateformat }}</small>
+              <i class="bi bi-arrow-right text-muted mx-1"></i>
+              <small>{{ leave.end_date | dateformat }}</small>
+              <br><span class="text-muted small">{{ leave.total_days }} day{{ 's' if leave.total_days > 1 }}</span>
+            </td>
+            <td><small class="text-muted">{{ leave.applied_at | dateformat }}</small></td>
+            <td>
+              <span class="status-badge status-{{ leave.status | lower }}">
+                {{ leave.status }}
+              </span>
+            </td>
+            <td>
+              <a href="{{ url_for('admin.view_leave', leave_id=leave.leave_id) }}"
+                 class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state py-5">
+      <i class="bi bi-inbox fs-1 text-muted"></i>
+      <p class="mt-2 text-muted">No leave requests yet.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── Leave Status Doughnut Chart ──────────────────────────────────────────────
+const statusCtx = document.getElementById('leaveStatusChart').getContext('2d');
+new Chart(statusCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Pending', 'Approved', 'Rejected'],
+    datasets: [{
+      data: [{{ pending_leaves }}, {{ approved_leaves }}, {{ rejected_leaves }}],
+      backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
+      borderColor: ['#fff', '#fff', '#fff'],
+      borderWidth: 3,
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 16, font: { family: 'Inter', size: 12 } } }
+    }
+  }
+});
+
+// ── Department Bar Chart ─────────────────────────────────────────────────────
+const deptCtx = document.getElementById('deptChart').getContext('2d');
+new Chart(deptCtx, {
+  type: 'bar',
+  data: {
+    labels: {{ dept_labels | tojson }},
+    datasets: [{
+      label: 'Employees',
+      data:  {{ dept_counts | tojson }},
+      backgroundColor: [
+        '#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444'
+      ],
+      borderRadius: 8,
+      borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { stepSize: 1, font: { family: 'Inter' } },
+        grid: { color: 'rgba(0,0,0,0.05)' }
+      },
+      x: {
+        ticks: { font: { family: 'Inter', size: 11 } },
+        grid: { display: false }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

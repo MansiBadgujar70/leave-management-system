@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- ══════════════════════════════════════════════════
+     MANAGE EMPLOYEES PAGE
+     ══════════════════════════════════════════════════ -->
+
+<div class="page-header d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="page-title">
+      <i class="bi bi-people-fill me-2 text-primary"></i>Manage Employees
+    </h2>
+    <p class="page-subtitle text-muted">
+      Total <strong>{{ employees | length }}</strong> employee(s) found.
+    </p>
+  </div>
+  <!-- Add Employee Button (opens modal) -->
+  <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+    <i class="bi bi-person-plus-fill me-2"></i>Add Employee
+  </button>
+</div>
+
+<!-- ── SEARCH BAR ─────────────────────────────────────────────────────────── -->
+<div class="card card-custom mb-4">
+  <div class="card-body py-3">
+    <form method="GET" action="{{ url_for('admin.manage_employees') }}" class="d-flex gap-2">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" name="search" value="{{ search }}" class="form-control form-control-lg"
+               placeholder="Search by name, department, email, or username…" />
+      </div>
+      <button type="submit" class="btn btn-primary px-4">Search</button>
+      {% if search %}
+        <a href="{{ url_for('admin.manage_employees') }}" class="btn btn-outline-secondary px-4">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- ── EMPLOYEE TABLE ──────────────────────────────────────────────────────── -->
+<div class="card card-custom">
+  <div class="card-body p-0">
+    {% if employees %}
+    <div class="table-responsive">
+      <table class="table table-hover table-custom mb-0">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Username</th>
+            <th>Department</th>
+            <th>Phone</th>
+            <th>Joining Date</th>
+            <th>Leave Balance</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in employees %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-3">
+                <div class="employee-avatar">{{ emp.full_name[0] }}</div>
+                <div>
+                  <div class="fw-semibold">{{ emp.full_name }}</div>
+                  <small class="text-muted">{{ emp.user.email }}</small>
+                </div>
+              </div>
+            </td>
+            <td><code class="text-primary">{{ emp.user.username }}</code></td>
+            <td><span class="badge dept-badge">{{ emp.department }}</span></td>
+            <td>{{ emp.phone_number or '—' }}</td>
+            <td>{{ emp.joining_date | dateformat }}</td>
+            <td>
+              <!-- Leave balance progress bar -->
+              {% set pct = ((emp.remaining_leaves / emp.total_leaves) * 100) | int if emp.total_leaves > 0 else 0 %}
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height:8px;">
+                  <div class="progress-bar
+                    {% if pct > 50 %}bg-success
+                    {% elif pct > 20 %}bg-warning
+                    {% else %}bg-danger{% endif %}"
+                    style="width: {{ pct }}%"></div>
+                </div>
+                <span class="fw-semibold small">{{ emp.remaining_leaves }}/{{ emp.total_leaves }}</span>
+              </div>
+            </td>
+            <td class="text-center">
+              <div class="btn-group btn-group-sm">
+                <a href="{{ url_for('admin.edit_employee', emp_id=emp.employee_id) }}"
+                   class="btn btn-outline-primary" title="Edit">
+                  <i class="bi bi-pencil-fill"></i>
+                </a>
+                <button type="button" class="btn btn-outline-danger"
+                        onclick="confirmDelete({{ emp.employee_id }}, '{{ emp.full_name }}')"
+                        title="Delete">
+                  <i class="bi bi-trash3-fill"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state py-5">
+      <i class="bi bi-person-x fs-1 text-muted"></i>
+      <p class="mt-2 text-muted mb-0">
+        {% if search %}No employees found for "{{ search }}".{% else %}No employees yet. Add one to get started!{% endif %}
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     ADD EMPLOYEE MODAL
+     ════════════════════════════════════════════════ -->
+<div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content modal-custom">
+      <div class="modal-header modal-header-custom">
+        <h5 class="modal-title" id="addEmployeeModalLabel">
+          <i class="bi bi-person-plus-fill me-2"></i>Add New Employee
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{{ url_for('admin.add_employee') }}" id="addEmpForm">
+          {{ form.hidden_tag() }}
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Username *</label>
+              {{ form.username(class="form-control", placeholder="e.g. john_doe") }}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Email *</label>
+              {{ form.email(class="form-control", placeholder="john@company.com") }}
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-semibold">Full Name *</label>
+              {{ form.full_name(class="form-control", placeholder="John Doe") }}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Password *</label>
+              {{ form.password(class="form-control", placeholder="Min 6 characters") }}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Department *</label>
+              {{ form.department(class="form-select") }}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Phone Number</label>
+              {{ form.phone_number(class="form-control", placeholder="Optional") }}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Joining Date *</label>
+              {{ form.joining_date(class="form-control") }}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Total Annual Leaves *</label>
+              {{ form.total_leaves(class="form-control") }}
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" form="addEmpForm" class="btn btn-primary">
+          <i class="bi bi-person-check-fill me-1"></i>Add Employee
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden delete form (submitted by JS) -->
+<form id="deleteForm" method="POST" style="display:none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+
+<script>
+function confirmDelete(empId, empName) {
+  if (confirm(`Are you sure you want to delete employee "${empName}"?\n\nThis action cannot be undone and will also delete all their leave requests.`)) {
+    const form = document.getElementById('deleteForm');
+    form.action = `/admin/employees/delete/${empId}`;
+    form.submit();
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- ══════════════════════════════════════════════════════
+     MANAGE LEAVE REQUESTS (ADMIN)
+     ══════════════════════════════════════════════════════ -->
+
+<div class="page-header mb-4">
+  <h2 class="page-title">
+    <i class="bi bi-file-earmark-text-fill me-2 text-primary"></i>Leave Requests
+  </h2>
+  <p class="page-subtitle text-muted">
+    Review, approve, or reject employee leave applications.
+  </p>
+</div>
+
+<!-- ── STATUS FILTER TABS ──────────────────────────────────────────────────── -->
+<ul class="nav nav-pills mb-4 filter-tabs">
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'All' %}active{% endif %}"
+       href="{{ url_for('admin.manage_leaves', status='All') }}">
+      <i class="bi bi-list-ul me-1"></i>All
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link pending-tab {% if status_filter == 'Pending' %}active{% endif %}"
+       href="{{ url_for('admin.manage_leaves', status='Pending') }}">
+      <i class="bi bi-hourglass-split me-1"></i>Pending
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link approved-tab {% if status_filter == 'Approved' %}active{% endif %}"
+       href="{{ url_for('admin.manage_leaves', status='Approved') }}">
+      <i class="bi bi-check-circle-fill me-1"></i>Approved
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link rejected-tab {% if status_filter == 'Rejected' %}active{% endif %}"
+       href="{{ url_for('admin.manage_leaves', status='Rejected') }}">
+      <i class="bi bi-x-circle-fill me-1"></i>Rejected
+    </a>
+  </li>
+</ul>
+
+<!-- ── LEAVE REQUESTS TABLE ───────────────────────────────────────────────── -->
+<div class="card card-custom">
+  <div class="card-body p-0">
+    {% if leaves %}
+    <div class="table-responsive">
+      <table class="table table-hover table-custom mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Employee</th>
+            <th>Leave Type</th>
+            <th>Duration</th>
+            <th>Days</th>
+            <th>Reason</th>
+            <th>Applied On</th>
+            <th>Status</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for leave in leaves %}
+          <tr>
+            <td class="fw-semibold text-muted">#{{ leave.leave_id }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="mini-avatar">{{ leave.employee.full_name[0] }}</div>
+                <div>
+                  <div class="fw-semibold small">{{ leave.employee.full_name }}</div>
+                  <small class="text-muted">{{ leave.employee.department }}</small>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge leave-type-badge leave-{{ leave.leave_type | replace(' ', '-') | lower }}">
+                {{ leave.leave_type }}
+              </span>
+            </td>
+            <td class="small">
+              {{ leave.start_date | dateformat }}<br>
+              <span class="text-muted">→ {{ leave.end_date | dateformat }}</span>
+            </td>
+            <td><strong>{{ leave.total_days }}</strong></td>
+            <td class="small text-muted" style="max-width:160px;">
+              <span title="{{ leave.reason }}">{{ leave.reason[:60] }}{% if leave.reason | length > 60 %}…{% endif %}</span>
+            </td>
+            <td class="small text-muted">{{ leave.applied_at | dateformat }}</td>
+            <td>
+              <span class="status-badge status-{{ leave.status | lower }}">{{ leave.status }}</span>
+            </td>
+            <td class="text-center">
+              <div class="d-flex justify-content-center gap-1">
+                <!-- VIEW -->
+                <a href="{{ url_for('admin.view_leave', leave_id=leave.leave_id) }}"
+                   class="btn btn-sm btn-outline-primary" title="View Details">
+                  <i class="bi bi-eye-fill"></i>
+                </a>
+
+                {% if leave.status == 'Pending' %}
+                <!-- APPROVE -->
+                <form method="POST" action="{{ url_for('admin.approve_leave', leave_id=leave.leave_id) }}"
+                      class="d-inline">
+                  {{ form.hidden_tag() }}
+                  <button type="submit" class="btn btn-sm btn-success" title="Approve"
+                          onclick="return confirm('Approve this leave request?')">
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                </form>
+                <!-- REJECT -->
+                <button type="button" class="btn btn-sm btn-danger" title="Reject"
+                        data-bs-toggle="modal" data-bs-target="#rejectModal{{ leave.leave_id }}">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+                {% endif %}
+
+                {% if leave.status == 'Approved' %}
+                <!-- REVOKE APPROVAL → Reject -->
+                <button type="button" class="btn btn-sm btn-outline-danger" title="Revoke & Reject"
+                        data-bs-toggle="modal" data-bs-target="#rejectModal{{ leave.leave_id }}">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state py-5">
+      <i class="bi bi-inbox fs-1 text-muted"></i>
+      <p class="mt-2 text-muted mb-0">
+        No {{ status_filter | lower }} leave requests found.
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Reject Modals (Rendered outside the table to prevent HTML validation & DOM hoisting issues) -->
+{% if leaves %}
+  {% for leave in leaves %}
+    {% if leave.status == 'Pending' or leave.status == 'Approved' %}
+    <div class="modal fade" id="rejectModal{{ leave.leave_id }}"
+         tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-custom">
+          <div class="modal-header modal-header-custom bg-danger">
+            <h5 class="modal-title text-white">
+              <i class="bi bi-x-circle-fill me-2"></i>
+              Reject Leave #{{ leave.leave_id }}
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-muted mb-1">
+              Rejecting leave request by <strong>{{ leave.employee.full_name }}</strong>
+              ({{ leave.total_days }} days).
+            </p>
+            <form method="POST"
+                  action="{{ url_for('admin.reject_leave', leave_id=leave.leave_id) }}"
+                  id="rejectForm{{ leave.leave_id }}">
+              {{ form.hidden_tag() }}
+              <label class="form-label fw-semibold">Admin Remarks / Reason</label>
+              <textarea name="admin_remarks" class="form-control" rows="3"
+                         placeholder="Provide a reason for rejection (optional)…"></textarea>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" form="rejectForm{{ leave.leave_id }}" class="btn btn-danger">
+              <i class="bi bi-x-circle-fill me-1"></i>Confirm Reject
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% endblock %}
