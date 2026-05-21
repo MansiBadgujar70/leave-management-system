@@ -6,12 +6,18 @@ Run this file to start the development server:
     python app.py
 """
 
+import os
 from flask import Flask
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from config import Config
 from models import db, User
 from datetime import date
+from dotenv import load_dotenv
+
+# Load env variables from .env if present
+load_dotenv()
+
 
 
 def create_app():
@@ -21,6 +27,12 @@ def create_app():
     Returns the configured app.
     """
     app = Flask(__name__)
+
+    # Ensure the instance folder exists (e.g. for SQLite database file)
+    try:
+        os.makedirs(app.instance_path)
+    except OSError:
+        pass
 
     # ── Load configuration from config.py ─────────────────────────────────────
     app.config.from_object(Config)
@@ -65,10 +77,35 @@ def create_app():
         """Make today's date available in every template."""
         return {'today': date.today()}
 
+    # ── Custom Error Handlers ────────────────────────────────────────────────
+    from flask import render_template
+    from sqlalchemy.exc import SQLAlchemyError
+
+    @app.errorhandler(404)
+    def page_not_found(e):
+        """Handle 404 Not Found error."""
+        return render_template('404.html', title='Page Not Found'), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        """Handle 500 Internal Server Error."""
+        app.logger.error(f"Internal Server Error: {str(e)}")
+        return render_template('500.html', title='Server Error'), 500
+
+    @app.errorhandler(SQLAlchemyError)
+    def handle_database_error(e):
+        """Handle database connection or query execution failure."""
+        app.logger.critical(f"Database connection failure: {str(e)}")
+        error_details = str(e) if app.debug else None
+        return render_template('db_error.html', error_details=error_details, title='Database Connection Error'), 500
+
     # ── Create tables + seed data on first run ────────────────────────────────
     with app.app_context():
-        db.create_all()          # Create tables if they don't exist
-        seed_initial_data()      # Insert sample admin + employees
+        try:
+            db.create_all()          # Create tables if they don't exist
+            seed_initial_data()      # Insert sample admin + employees
+        except Exception as e:
+            app.logger.critical(f"Failed to initialize database tables/seed data: {e}")
 
     return app
 
