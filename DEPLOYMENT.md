@@ -91,7 +91,7 @@ Now, we'll deploy the Flask web application and connect it to our database.
      ```
    - **Start Command**: 
      ```bash
-     gunicorn "app:create_app()"
+     gunicorn app:app
      ```
    - **Instance Type**: Select **Free**
 

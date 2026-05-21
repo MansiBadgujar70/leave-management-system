@@ -231,11 +231,11 @@ def seed_initial_data():
     print("    Employee -> username: bob     | password: bob123")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ENTRY POINT
-# ─────────────────────────────────────────────────────────────────────────────
+# Expose application instance for WSGI servers (e.g. Gunicorn running "app:app")
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
     # debug=True enables auto-reloading and better error messages
     # Set debug=False for production
     app.run(debug=True, host='0.0.0.0', port=5000)
+
