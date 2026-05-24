@@ -770,3 +770,219 @@ code.text-primary { background: var(--primary-light); padding: 2px 8px; border-r
 }
 .card-custom { animation: fadeInUp .4s ease both; }
 .stat-card   { animation: fadeInUp .35s ease both; }
+
+/* ═══════════════════════════════════════════════════════════
+   INFO STAT CARD (teal)
+   ═══════════════════════════════════════════════════════════ */
+.stat-card-info { background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%); }
+
+/* ═══════════════════════════════════════════════════════════
+   ATTENDANCE WIDGET
+   ═══════════════════════════════════════════════════════════ */
+.attendance-widget {
+  background: white;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeInUp .4s ease both;
+}
+
+.attendance-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.attendance-date {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.attendance-day {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.attendance-office-hours {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* Time display row */
+.attendance-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.att-time-block {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.att-time-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-muted);
+}
+
+.att-time-value {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.att-divider {
+  color: var(--text-light);
+  font-size: 18px;
+}
+
+.att-late-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #991b1b;
+  background: #fee2e2;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.att-ontime-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #065f46;
+  background: #d1fae5;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.att-hours-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #1e40af;
+  background: #dbeafe;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.att-pending-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* Status badge for attendance */
+.att-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+.att-status-on-time  { background: #d1fae5; color: #065f46; }
+.att-status-late     { background: #fef3c7; color: #78350f; }
+.att-status-absent   { background: #fee2e2; color: #991b1b; }
+.att-status-half-day { background: #ede9fe; color: #4c1d95; }
+
+/* Check-in / Check-out buttons */
+.btn-attendance {
+  padding: 14px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-checkin {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 4px 14px rgba(16,185,129,.35);
+}
+.btn-checkin:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16,185,129,.45);
+  color: white;
+}
+
+.btn-checkout {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  box-shadow: 0 4px 14px rgba(245,158,11,.35);
+}
+.btn-checkout:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245,158,11,.45);
+  color: white;
+}
+
+/* Not checked in state */
+.att-not-checked-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  gap: 6px;
+}
+
+.att-clock-icon {
+  font-size: 48px;
+  color: var(--primary);
+  opacity: .6;
+}
+
+.att-not-in-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.att-not-in-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Completed state */
+.att-complete-msg {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+

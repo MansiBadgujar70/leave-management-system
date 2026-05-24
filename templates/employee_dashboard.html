@@ -2,97 +2,191 @@
 
 {% block content %}
 <!-- ════════════════════════════════════════════════════════════════
-     EMPLOYEE DASHBOARD
+     EMPLOYEE DASHBOARD — Professional HR Platform Layout
      ════════════════════════════════════════════════════════════════ -->
 
-<div class="page-header mb-4">
-  <h2 class="page-title">
-    <i class="bi bi-house-fill me-2 text-primary"></i>My Dashboard
-  </h2>
-  <p class="page-subtitle text-muted">
-    Hello, <strong>{{ employee.full_name }}</strong>! Here's your leave summary.
-  </p>
-</div>
-
-<!-- ── STAT CARDS ──────────────────────────────────────────────────────────── -->
-<div class="row g-4 mb-4">
-
-  <div class="col-md-3 col-sm-6">
-    <div class="stat-card stat-card-primary">
-      <div class="stat-icon"><i class="bi bi-calendar2-check-fill"></i></div>
-      <div class="stat-info">
-        <p class="stat-label">Remaining Leaves</p>
-        <h3 class="stat-value">{{ employee.remaining_leaves }}</h3>
-        <small class="text-white-50">of {{ employee.total_leaves }} total</small>
-      </div>
-    </div>
+<!-- Page Header -->
+<div class="page-header mb-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
+  <div>
+    <h2 class="page-title">
+      <i class="bi bi-house-fill me-2 text-primary"></i>My Dashboard
+    </h2>
+    <p class="page-subtitle text-muted">
+      Welcome, <strong>{{ employee.full_name }}</strong> &nbsp;|&nbsp;
+      <span class="badge dept-badge">{{ employee.department }}</span>
+      &nbsp;|&nbsp; <small class="text-muted" id="liveClock"></small>
+    </p>
   </div>
-
-  <div class="col-md-3 col-sm-6">
-    <div class="stat-card stat-card-success">
-      <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
-      <div class="stat-info">
-        <p class="stat-label">Approved</p>
-        <h3 class="stat-value">{{ approved_count }}</h3>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-md-3 col-sm-6">
-    <div class="stat-card stat-card-warning">
-      <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
-      <div class="stat-info">
-        <p class="stat-label">Pending</p>
-        <h3 class="stat-value">{{ pending_count }}</h3>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-md-3 col-sm-6">
-    <div class="stat-card stat-card-danger">
-      <div class="stat-icon"><i class="bi bi-x-circle-fill"></i></div>
-      <div class="stat-info">
-        <p class="stat-label">Rejected</p>
-        <h3 class="stat-value">{{ rejected_count }}</h3>
-      </div>
-    </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('employee.apply_leave') }}" class="btn btn-primary">
+      <i class="bi bi-plus-circle-fill me-1"></i>Apply Leave
+    </a>
   </div>
 </div>
 
-<!-- ── LEAVE BALANCE VISUAL + QUICK APPLY ──────────────────────────────────── -->
+<!-- ── ROW 1: ATTENDANCE WIDGET + STAT CARDS ───────────────────────────── -->
 <div class="row g-4 mb-4">
 
-  <!-- Leave Balance Progress Ring -->
-  <div class="col-lg-5">
-    <div class="card card-custom h-100">
-      <div class="card-header-custom">
-        <h5 class="card-title-custom">
-          <i class="bi bi-pie-chart-fill me-2"></i>Leave Balance
-        </h5>
-      </div>
-      <div class="card-body d-flex flex-column align-items-center justify-content-center py-4">
-        <canvas id="balanceChart" width="220" height="220"></canvas>
-        <div class="mt-3 text-center">
-          <div class="fs-4 fw-bold text-primary">{{ employee.remaining_leaves }} days left</div>
-          <div class="text-muted small">out of {{ employee.total_leaves }} total</div>
+  <!-- TODAY'S ATTENDANCE WIDGET -->
+  <div class="col-lg-4">
+    <div class="attendance-widget">
+      <div class="attendance-widget-header">
+        <div>
+          <div class="attendance-date">{{ today | dateformat }}</div>
+          <div class="attendance-day">Today's Attendance</div>
+        </div>
+        <div class="attendance-office-hours">
+          <i class="bi bi-clock me-1"></i>9:00 AM – 5:00 PM
         </div>
       </div>
+
+      {% if today_attendance and today_attendance.check_in_time %}
+        <!-- Checked In State -->
+        <div class="attendance-status-row">
+          <div class="att-time-block">
+            <div class="att-time-label">Check-In</div>
+            <div class="att-time-value text-success">
+              {{ today_attendance.check_in_time.strftime('%I:%M %p') }}
+            </div>
+            {% if today_attendance.late_minutes > 0 %}
+              <span class="att-late-tag">{{ today_attendance.late_minutes }} min late</span>
+            {% else %}
+              <span class="att-ontime-tag">On Time ✓</span>
+            {% endif %}
+          </div>
+          <div class="att-divider"><i class="bi bi-arrow-right"></i></div>
+          <div class="att-time-block">
+            <div class="att-time-label">Check-Out</div>
+            {% if today_attendance.check_out_time %}
+              <div class="att-time-value text-primary">
+                {{ today_attendance.check_out_time.strftime('%I:%M %p') }}
+              </div>
+              <span class="att-hours-tag">{{ today_attendance.work_hours or 0 }}h worked</span>
+            {% else %}
+              <div class="att-time-value text-muted">—</div>
+              <span class="att-pending-tag">Pending</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Status Badge -->
+        <div class="text-center mb-3">
+          {% set s = today_attendance.status %}
+          <span class="att-status-badge att-status-{{ s | lower | replace(' ', '-') }}">
+            <i class="bi bi-{% if s == 'On Time' %}check-circle-fill{% elif s == 'Late' %}exclamation-circle-fill{% elif s == 'Half Day' %}clock-fill{% else %}x-circle-fill{% endif %} me-1"></i>
+            {{ s }}
+          </span>
+        </div>
+
+        <!-- Check-Out Button -->
+        {% if not today_attendance.check_out_time %}
+        <form method="POST" action="{{ url_for('employee.check_out') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-attendance btn-checkout w-100">
+            <i class="bi bi-box-arrow-right me-2"></i>Check Out Now
+          </button>
+        </form>
+        {% else %}
+        <div class="att-complete-msg">
+          <i class="bi bi-check2-all me-2"></i>
+          Attendance complete — {{ today_attendance.work_hours or 0 }}h logged
+        </div>
+        {% endif %}
+
+      {% else %}
+        <!-- Not Checked In State -->
+        <div class="att-not-checked-in">
+          <div class="att-clock-icon">
+            <i class="bi bi-fingerprint"></i>
+          </div>
+          <div class="att-not-in-label">You haven't checked in yet</div>
+          <div class="att-not-in-sub">Office hours: 9:00 AM – 5:00 PM</div>
+        </div>
+        <form method="POST" action="{{ url_for('employee.check_in') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-attendance btn-checkin w-100">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Check In Now
+          </button>
+        </form>
+      {% endif %}
     </div>
   </div>
 
-  <!-- Quick Info / Apply CTA -->
+  <!-- STAT CARDS -->
+  <div class="col-lg-8">
+    <div class="row g-3 h-100">
+
+      <div class="col-md-6">
+        <div class="stat-card stat-card-primary h-100">
+          <div class="stat-icon"><i class="bi bi-calendar2-check-fill"></i></div>
+          <div class="stat-info">
+            <p class="stat-label">Leave Balance</p>
+            <h3 class="stat-value">{{ employee.remaining_leaves }}</h3>
+            <small class="text-white-50">of {{ employee.total_leaves }} days total</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="stat-card stat-card-success h-100">
+          <div class="stat-icon"><i class="bi bi-person-check-fill"></i></div>
+          <div class="stat-info">
+            <p class="stat-label">Present This Month</p>
+            <h3 class="stat-value">{{ monthly_present }}</h3>
+            <small class="text-white-50">days attended</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="stat-card stat-card-warning h-100">
+          <div class="stat-icon"><i class="bi bi-alarm-fill"></i></div>
+          <div class="stat-info">
+            <p class="stat-label">Late Arrivals</p>
+            <h3 class="stat-value">{{ monthly_late }}</h3>
+            <small class="text-white-50">this month</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="stat-card stat-card-info h-100">
+          <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+          <div class="stat-info">
+            <p class="stat-label">Hours Worked</p>
+            <h3 class="stat-value">{{ total_work_hours }}</h3>
+            <small class="text-white-50">hours this month</small>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── ROW 2: PROFILE INFO + LEAVE BALANCE ────────────────────────────── -->
+<div class="row g-4 mb-4">
+
+  <!-- Profile Summary -->
   <div class="col-lg-7">
     <div class="card card-custom h-100">
-      <div class="card-header-custom">
-        <h5 class="card-title-custom">
-          <i class="bi bi-person-badge-fill me-2"></i>My Profile
+      <div class="card-header-custom d-flex justify-content-between align-items-center">
+        <h5 class="card-title-custom mb-0">
+          <i class="bi bi-person-badge-fill me-2"></i>Employee Details
         </h5>
+        <a href="{{ url_for('employee.profile') }}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-pencil me-1"></i>Edit
+        </a>
       </div>
       <div class="card-body">
         <div class="employee-profile-grid">
           <div class="profile-item">
             <span class="profile-label">Full Name</span>
             <span class="profile-value">{{ employee.full_name }}</span>
+          </div>
+          <div class="profile-item">
+            <span class="profile-label">Employee ID</span>
+            <span class="profile-value"><code>#EMP{{ '%04d' % employee.employee_id }}</code></span>
           </div>
           <div class="profile-item">
             <span class="profile-label">Department</span>
@@ -110,29 +204,43 @@
             <span class="profile-label">Joining Date</span>
             <span class="profile-value">{{ employee.joining_date | dateformat }}</span>
           </div>
-          <div class="profile-item">
-            <span class="profile-label">Username</span>
-            <span class="profile-value"><code>{{ employee.user.username }}</code></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leave Balance Chart -->
+  <div class="col-lg-5">
+    <div class="card card-custom h-100">
+      <div class="card-header-custom">
+        <h5 class="card-title-custom">
+          <i class="bi bi-pie-chart-fill me-2"></i>Leave Balance
+        </h5>
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center py-3">
+        <canvas id="balanceChart" width="180" height="180"></canvas>
+        <div class="mt-3 text-center">
+          <div class="fs-3 fw-bold text-primary">{{ employee.remaining_leaves }} days left</div>
+          <div class="text-muted small">
+            Used: {{ employee.total_leaves - employee.remaining_leaves }} &nbsp;|&nbsp;
+            Total: {{ employee.total_leaves }}
           </div>
         </div>
-        <div class="d-flex gap-2 mt-4">
-          <a href="{{ url_for('employee.apply_leave') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle-fill me-2"></i>Apply for Leave
-          </a>
-          <a href="{{ url_for('employee.profile') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-pencil me-1"></i>Edit Profile
-          </a>
+        <div class="d-flex gap-2 mt-3">
+          <span class="badge bg-primary">Approved: {{ approved_count }}</span>
+          <span class="badge bg-warning text-dark">Pending: {{ pending_count }}</span>
+          <span class="badge bg-danger">Rejected: {{ rejected_count }}</span>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── RECENT LEAVE APPLICATIONS ──────────────────────────────────────────── -->
+<!-- ── RECENT LEAVE APPLICATIONS ──────────────────────────────────────── -->
 <div class="card card-custom">
   <div class="card-header-custom d-flex justify-content-between align-items-center">
     <h5 class="card-title-custom mb-0">
-      <i class="bi bi-clock-history me-2"></i>Recent Applications
+      <i class="bi bi-clock-history me-2"></i>Recent Leave Applications
     </h5>
     <a href="{{ url_for('employee.leave_history') }}" class="btn btn-sm btn-primary">
       View All <i class="bi bi-arrow-right ms-1"></i>
@@ -149,7 +257,7 @@
             <th>Duration</th>
             <th>Days</th>
             <th>Status</th>
-            <th>Remarks</th>
+            <th>Admin Remarks</th>
           </tr>
         </thead>
         <tbody>
@@ -170,9 +278,7 @@
             <td>
               <span class="status-badge status-{{ leave.status | lower }}">{{ leave.status }}</span>
             </td>
-            <td class="text-muted small fst-italic">
-              {{ leave.admin_remarks or '—' }}
-            </td>
+            <td class="text-muted small fst-italic">{{ leave.admin_remarks or '—' }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -192,11 +298,24 @@
 
 {% block extra_scripts %}
 <script>
+// Live clock
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2,'0');
+  const m = now.getMinutes().toString().padStart(2,'0');
+  const s = now.getSeconds().toString().padStart(2,'0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hh = (h % 12 || 12).toString().padStart(2,'0');
+  const el = document.getElementById('liveClock');
+  if (el) el.textContent = `${hh}:${m}:${s} ${ampm}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
 // Leave balance doughnut chart
 const ctx = document.getElementById('balanceChart').getContext('2d');
 const remaining = {{ employee.remaining_leaves }};
 const used      = {{ employee.total_leaves }} - remaining;
-
 new Chart(ctx, {
   type: 'doughnut',
   data: {
@@ -213,11 +332,7 @@ new Chart(ctx, {
     cutout: '75%',
     plugins: {
       legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: ctx => ` ${ctx.label}: ${ctx.raw} days`
-        }
-      }
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} days` } }
     }
   }
 });

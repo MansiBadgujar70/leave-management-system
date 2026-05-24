@@ -22,9 +22,9 @@ from flask import (Blueprint, render_template, redirect, url_for,
                    flash, request, abort, jsonify)
 from flask_login import login_required, current_user
 from functools import wraps
-from models import db, User, Employee, LeaveRequest
+from models import db, User, Employee, LeaveRequest, Attendance
 from forms import AddEmployeeForm, AddAdminForm, EditEmployeeForm, AdminRemarkForm
-from datetime import date
+from datetime import date, datetime
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -78,6 +78,13 @@ def dashboard():
     dept_labels  = [d[0] for d in dept_data]
     dept_counts  = [d[1] for d in dept_data]
 
+    # Today's attendance summary
+    today = date.today()
+    today_records    = Attendance.query.filter_by(date=today).all()
+    today_present    = sum(1 for a in today_records if a.status in ('On Time', 'Late', 'Half Day'))
+    today_late       = sum(1 for a in today_records if a.status == 'Late')
+    today_absent     = total_employees - today_present
+
     return render_template(
         'admin_dashboard.html',
         title='Admin Dashboard',
@@ -88,7 +95,10 @@ def dashboard():
         rejected_leaves=rejected_leaves,
         recent_leaves=recent_leaves,
         dept_labels=dept_labels,
-        dept_counts=dept_counts
+        dept_counts=dept_counts,
+        today_present=today_present,
+        today_late=today_late,
+        today_absent=today_absent
     )
 
 
@@ -381,3 +391,116 @@ def view_leave(leave_id):
     leave = LeaveRequest.query.get_or_404(leave_id)
     form  = AdminRemarkForm()
     return render_template('view_leave.html', leave=leave, form=form, title='Leave Details')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ATTENDANCE MANAGEMENT (Admin)
+# ─────────────────────────────────────────────────────────────────────────────
+@admin_bp.route('/attendance')
+@admin_required
+def manage_attendance():
+    """
+    Admin view of all employee attendance.
+    Filters: ?date=YYYY-MM-DD, ?dept=HR, ?status=Late
+    """
+    filter_date   = request.args.get('date', date.today().strftime('%Y-%m-%d'))
+    filter_dept   = request.args.get('dept', '')
+    filter_status = request.args.get('status', '')
+
+    try:
+        view_date = datetime.strptime(filter_date, '%Y-%m-%d').date()
+    except ValueError:
+        view_date = date.today()
+
+    query = (db.session.query(Attendance)
+             .join(Employee)
+             .join(User)
+             .filter(Attendance.date == view_date))
+
+    if filter_dept:
+        query = query.filter(Employee.department == filter_dept)
+    if filter_status:
+        query = query.filter(Attendance.status == filter_status)
+
+    records = query.order_by(Employee.full_name).all()
+
+    # Employees with NO attendance record today (absent)
+    all_employees = Employee.query.join(User).filter(User.role == 'employee').all()
+    checked_in_ids = {r.employee_id for r in records}
+    absent_employees = [e for e in all_employees if e.employee_id not in checked_in_ids]
+
+    # Summary stats for this date
+    total_present  = sum(1 for r in records if r.status in ('On Time', 'Late', 'Half Day'))
+    total_on_time  = sum(1 for r in records if r.status == 'On Time')
+    total_late     = sum(1 for r in records if r.status == 'Late')
+    total_absent   = len(absent_employees)
+    total_employees = Employee.query.join(User).filter(User.role == 'employee').count()
+
+    # Departments for filter dropdown
+    departments = [d[0] for d in db.session.query(Employee.department).distinct().all()]
+
+    return render_template(
+        'admin_attendance.html',
+        title='Attendance Report',
+        records=records,
+        absent_employees=absent_employees,
+        view_date=view_date,
+        filter_date=filter_date,
+        filter_dept=filter_dept,
+        filter_status=filter_status,
+        total_present=total_present,
+        total_on_time=total_on_time,
+        total_late=total_late,
+        total_absent=total_absent,
+        total_employees=total_employees,
+        departments=departments
+    )
+
+
+@admin_bp.route('/attendance/edit/<int:attendance_id>', methods=['POST'])
+@admin_required
+def edit_attendance(attendance_id):
+    """
+    Allow admin/manager to edit an attendance record.
+    Can update check-in time, check-out time, status, and notes.
+    """
+    record = Attendance.query.get_or_404(attendance_id)
+
+    check_in_str  = request.form.get('check_in_time', '').strip()
+    check_out_str = request.form.get('check_out_time', '').strip()
+    new_status    = request.form.get('status', '').strip()
+    notes         = request.form.get('notes', '').strip()
+
+    try:
+        if check_in_str:
+            record.check_in_time = datetime.strptime(check_in_str, '%H:%M').time()
+            # Recalculate late minutes
+            deadline = datetime.strptime('09:00', '%H:%M').time()
+            if record.check_in_time > deadline:
+                cin_dt      = datetime.combine(record.date, record.check_in_time)
+                dl_dt       = datetime.combine(record.date, deadline)
+                record.late_minutes = int((cin_dt - dl_dt).total_seconds() / 60)
+            else:
+                record.late_minutes = 0
+
+        if check_out_str:
+            record.check_out_time = datetime.strptime(check_out_str, '%H:%M').time()
+
+        # Recalculate work hours if both times set
+        if record.check_in_time and record.check_out_time:
+            cin_dt  = datetime.combine(record.date, record.check_in_time)
+            cout_dt = datetime.combine(record.date, record.check_out_time)
+            record.work_hours = round((cout_dt - cin_dt).total_seconds() / 3600, 2)
+
+        if new_status in ('On Time', 'Late', 'Absent', 'Half Day'):
+            record.status = new_status
+
+        record.notes = notes if notes else None
+        db.session.commit()
+        flash(f'Attendance record updated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating attendance: {str(e)}', 'danger')
+
+    return redirect(url_for('admin.manage_attendance',
+                            date=record.date.strftime('%Y-%m-%d')))

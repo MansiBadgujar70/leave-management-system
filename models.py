@@ -80,6 +80,10 @@ class Employee(db.Model):
     leave_requests  = db.relationship('LeaveRequest', backref='employee',
                                        lazy='dynamic', cascade='all, delete-orphan')
 
+    # One-to-many: one employee → many attendance records
+    attendances     = db.relationship('Attendance', backref='employee',
+                                       lazy='dynamic', cascade='all, delete-orphan')
+
     def __repr__(self):
         return f'<Employee {self.full_name} | Dept: {self.department}>'
 
@@ -125,3 +129,64 @@ class LeaveRequest(db.Model):
 
     def __repr__(self):
         return f'<LeaveRequest #{self.leave_id} | {self.leave_type} | {self.status}>'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE 4 : attendance
+# Tracks daily check-in / check-out for each employee
+# Business Rules:
+#   - Office hours: 9:00 AM → 5:00 PM (standard 8-hour day)
+#   - On Time  : check-in at or before 09:00
+#   - Late     : check-in after 09:00 (late_minutes > 0)
+#   - Half Day : total work_hours < 4.0
+#   - Absent   : no record / admin-marked
+# ─────────────────────────────────────────────────────────────────────────────
+class Attendance(db.Model):
+    """Represents a single day's attendance record for an employee."""
+    __tablename__ = 'attendance'
+
+    attendance_id  = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    employee_id    = db.Column(db.Integer, db.ForeignKey('employees.employee_id', ondelete='CASCADE'), nullable=False)
+    date           = db.Column(db.Date, nullable=False, default=datetime.utcnow)
+
+    check_in_time  = db.Column(db.Time, nullable=True)   # e.g. 09:03:00
+    check_out_time = db.Column(db.Time, nullable=True)   # e.g. 17:22:00
+    work_hours     = db.Column(db.Float, nullable=True)  # e.g. 8.32 hours
+
+    # Status: On Time / Late / Absent / Half Day
+    status = db.Column(
+        db.Enum('On Time', 'Late', 'Absent', 'Half Day', name='attendance_status_enum'),
+        nullable=False,
+        default='Absent'
+    )
+
+    late_minutes   = db.Column(db.Integer, nullable=False, default=0)  # Minutes late past 9 AM
+    notes          = db.Column(db.String(255), nullable=True)          # Admin notes / edits
+
+    # Unique constraint: one record per employee per day
+    __table_args__ = (db.UniqueConstraint('employee_id', 'date', name='uq_employee_date'),)
+
+    def calculate_work_hours(self):
+        """Auto-calculate work hours from check-in and check-out times."""
+        if self.check_in_time and self.check_out_time:
+            from datetime import datetime as dt
+            cin  = dt.combine(self.date, self.check_in_time)
+            cout = dt.combine(self.date, self.check_out_time)
+            delta = cout - cin
+            return round(delta.total_seconds() / 3600, 2)
+        return None
+
+    def calculate_late_minutes(self):
+        """Return how many minutes past 9:00 AM the employee checked in."""
+        if self.check_in_time:
+            from datetime import time
+            deadline = time(9, 0, 0)
+            if self.check_in_time > deadline:
+                from datetime import datetime as dt
+                cin      = dt.combine(self.date, self.check_in_time)
+                deadline_dt = dt.combine(self.date, deadline)
+                return int((cin - deadline_dt).total_seconds() / 60)
+        return 0
+
+    def __repr__(self):
+        return f'<Attendance emp={self.employee_id} date={self.date} status={self.status}>'

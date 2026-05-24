@@ -66,8 +66,13 @@
              href="{{ url_for('admin.manage_leaves') }}">
             <i class="bi bi-file-earmark-text-fill"></i>
             <span>Leave Requests</span>
-            <!-- Pending badge -->
-            {% set pending_count = pending_badge_count if pending_badge_count is defined else 0 %}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link sidebar-link {% if request.endpoint == 'admin.manage_attendance' %}active{% endif %}"
+             href="{{ url_for('admin.manage_attendance') }}">
+            <i class="bi bi-clock-fill"></i>
+            <span>Attendance</span>
           </a>
         </li>
 
@@ -92,6 +97,13 @@
              href="{{ url_for('employee.leave_history') }}">
             <i class="bi bi-clock-history"></i>
             <span>Leave History</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link sidebar-link {% if request.endpoint == 'employee.attendance_history' %}active{% endif %}"
+             href="{{ url_for('employee.attendance_history') }}">
+            <i class="bi bi-clock-fill"></i>
+            <span>Attendance</span>
           </a>
         </li>
         <li class="nav-item">

@@ -13,12 +13,13 @@ Routes:
 """
 
 from flask import (Blueprint, render_template, redirect, url_for,
-                   flash, request)
+                   flash, request, jsonify)
 from flask_login import login_required, current_user
 from functools import wraps
-from models import db, Employee, LeaveRequest
+from models import db, Employee, LeaveRequest, Attendance
 from forms import ApplyLeaveForm, EditProfileForm
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, time
+
 
 employee_bp = Blueprint('employee', __name__)
 
@@ -69,6 +70,25 @@ def dashboard():
                      .order_by(LeaveRequest.applied_at.desc())
                      .limit(5).all())
 
+    # Today's attendance record
+    today_attendance = Attendance.query.filter_by(
+        employee_id=employee.employee_id,
+        date=date.today()
+    ).first()
+
+    # Monthly attendance summary (current month)
+    from datetime import date as dt_date
+    first_of_month = date.today().replace(day=1)
+    monthly_records = Attendance.query.filter(
+        Attendance.employee_id == employee.employee_id,
+        Attendance.date >= first_of_month,
+        Attendance.date <= date.today()
+    ).all()
+    monthly_present  = sum(1 for a in monthly_records if a.status in ('On Time', 'Late', 'Half Day'))
+    monthly_late     = sum(1 for a in monthly_records if a.status == 'Late')
+    monthly_absent   = sum(1 for a in monthly_records if a.status == 'Absent')
+    total_work_hours = sum(a.work_hours or 0 for a in monthly_records)
+
     return render_template(
         'employee_dashboard.html',
         title='My Dashboard',
@@ -76,8 +96,14 @@ def dashboard():
         approved_count=approved_count,
         pending_count=pending_count,
         rejected_count=rejected_count,
-        recent_leaves=recent_leaves
+        recent_leaves=recent_leaves,
+        today_attendance=today_attendance,
+        monthly_present=monthly_present,
+        monthly_late=monthly_late,
+        monthly_absent=monthly_absent,
+        total_work_hours=round(total_work_hours, 1)
     )
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -244,3 +270,153 @@ def profile():
         return redirect(url_for('employee.profile'))
 
     return render_template('profile.html', form=form, employee=employee, title='My Profile')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ATTENDANCE — CHECK IN
+# ─────────────────────────────────────────────────────────────────────────────
+@employee_bp.route('/attendance/check-in', methods=['POST'])
+@employee_required
+def check_in():
+    """
+    Record employee check-in for today.
+    Business rules:
+      - 9:00 AM deadline → On Time if at/before, Late if after
+      - Only one check-in per day allowed
+    """
+    employee = get_current_employee()
+    today    = date.today()
+    now_time = datetime.now().time()
+
+    # Check if already checked in today
+    existing = Attendance.query.filter_by(employee_id=employee.employee_id, date=today).first()
+    if existing and existing.check_in_time:
+        flash(f'You have already checked in today at {existing.check_in_time.strftime("%I:%M %p")}.', 'warning')
+        return redirect(url_for('employee.dashboard'))
+
+    # Determine late status
+    deadline     = time(9, 0, 0)
+    late_minutes = 0
+    if now_time > deadline:
+        from datetime import datetime as dt
+        cin_dt       = dt.combine(today, now_time)
+        deadline_dt  = dt.combine(today, deadline)
+        late_minutes = int((cin_dt - deadline_dt).total_seconds() / 60)
+        status = 'Late'
+    else:
+        status = 'On Time'
+
+    if existing:
+        # Update existing Absent record
+        existing.check_in_time = now_time
+        existing.status        = status
+        existing.late_minutes  = late_minutes
+    else:
+        record = Attendance(
+            employee_id   = employee.employee_id,
+            date          = today,
+            check_in_time = now_time,
+            status        = status,
+            late_minutes  = late_minutes
+        )
+        db.session.add(record)
+
+    db.session.commit()
+
+    if late_minutes > 0:
+        flash(f'Checked in at {now_time.strftime("%I:%M %p")} — {late_minutes} minutes late.', 'warning')
+    else:
+        flash(f'Good morning! Checked in at {now_time.strftime("%I:%M %p")} — On Time ✓', 'success')
+
+    return redirect(url_for('employee.dashboard'))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ATTENDANCE — CHECK OUT
+# ─────────────────────────────────────────────────────────────────────────────
+@employee_bp.route('/attendance/check-out', methods=['POST'])
+@employee_required
+def check_out():
+    """
+    Record employee check-out for today and calculate total work hours.
+    Half Day: < 4 hours worked.
+    """
+    employee = get_current_employee()
+    today    = date.today()
+    now_time = datetime.now().time()
+
+    record = Attendance.query.filter_by(employee_id=employee.employee_id, date=today).first()
+
+    if not record or not record.check_in_time:
+        flash('You have not checked in today. Please check in first.', 'danger')
+        return redirect(url_for('employee.dashboard'))
+
+    if record.check_out_time:
+        flash(f'You have already checked out today at {record.check_out_time.strftime("%I:%M %p")}.', 'warning')
+        return redirect(url_for('employee.dashboard'))
+
+    # Calculate work hours
+    from datetime import datetime as dt
+    cin_dt   = dt.combine(today, record.check_in_time)
+    cout_dt  = dt.combine(today, now_time)
+    work_hrs = round((cout_dt - cin_dt).total_seconds() / 3600, 2)
+
+    record.check_out_time = now_time
+    record.work_hours     = work_hrs
+
+    # If worked less than 4 hours, mark as Half Day
+    if work_hrs < 4.0:
+        record.status = 'Half Day'
+
+    db.session.commit()
+    flash(f'Checked out at {now_time.strftime("%I:%M %p")} — Total: {work_hrs:.1f} hours worked today.', 'success')
+    return redirect(url_for('employee.dashboard'))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ATTENDANCE HISTORY — Employee's own records
+# ─────────────────────────────────────────────────────────────────────────────
+@employee_bp.route('/attendance')
+@employee_required
+def attendance_history():
+    """Show the employee's full attendance history, newest first."""
+    employee = get_current_employee()
+
+    # Filter by month if provided
+    month_str = request.args.get('month', '')
+    if month_str:
+        try:
+            year, month = map(int, month_str.split('-'))
+            from calendar import monthrange
+            last_day = monthrange(year, month)[1]
+            records = Attendance.query.filter(
+                Attendance.employee_id == employee.employee_id,
+                Attendance.date >= date(year, month, 1),
+                Attendance.date <= date(year, month, last_day)
+            ).order_by(Attendance.date.desc()).all()
+        except Exception:
+            records = Attendance.query.filter_by(employee_id=employee.employee_id).order_by(Attendance.date.desc()).all()
+    else:
+        records = Attendance.query.filter_by(employee_id=employee.employee_id).order_by(Attendance.date.desc()).all()
+
+    # Summary stats for the filtered period
+    total_present  = sum(1 for r in records if r.status in ('On Time', 'Late', 'Half Day'))
+    total_late     = sum(1 for r in records if r.status == 'Late')
+    total_absent   = sum(1 for r in records if r.status == 'Absent')
+    total_hrs      = round(sum(r.work_hours or 0 for r in records), 1)
+    avg_late_mins  = round(sum(r.late_minutes for r in records if r.late_minutes > 0) /
+                           max(total_late, 1), 0)
+
+    return render_template(
+        'employee_attendance.html',
+        title='My Attendance',
+        employee=employee,
+        records=records,
+        total_present=total_present,
+        total_late=total_late,
+        total_absent=total_absent,
+        total_hrs=total_hrs,
+        avg_late_mins=int(avg_late_mins),
+        month_str=month_str
+    )
+
