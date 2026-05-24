@@ -86,25 +86,6 @@
         <div class="d-grid mt-4">
           {{ form.submit(class="btn btn-primary btn-lg w-100 auth-submit-btn") }}
         </div>
-
-        <!-- Demo Credentials helper -->
-        <div class="demo-creds mt-4">
-          <p class="demo-title"><i class="bi bi-info-circle me-1"></i>Demo Credentials</p>
-          <div class="demo-grid">
-            <div class="demo-item" onclick="fillCreds('admin','admin123')">
-              <span class="badge bg-danger me-1">Admin</span>
-              admin / admin123
-            </div>
-            <div class="demo-item" onclick="fillCreds('alice','alice123')">
-              <span class="badge bg-primary me-1">Employee</span>
-              alice / alice123
-            </div>
-            <div class="demo-item" onclick="fillCreds('bob','bob123')">
-              <span class="badge bg-primary me-1">Employee</span>
-              bob / bob123
-            </div>
-          </div>
-        </div>
       </form>
 
       <!-- Register link -->
@@ -132,11 +113,5 @@
       eyeIcon.classList.replace('bi-eye-slash', 'bi-eye');
     }
   });
-
-  // Auto-fill demo credentials on click
-  function fillCreds(user, pwd) {
-    document.getElementById('username').value = user;
-    document.getElementById('password').value = pwd;
-  }
 </script>
 {% endblock %}

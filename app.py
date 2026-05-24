@@ -131,8 +131,8 @@ def seed_initial_data():
 
     # ── Create Admin ──────────────────────────────────────────────────────────
     admin = User(
-        username='admin',
-        email='admin@leavesystem.com',
+        username='manager',
+        email='manager@leavesystem.com',
         role='admin'
     )
     admin.set_password('admin123')
@@ -226,7 +226,7 @@ def seed_initial_data():
 
     db.session.commit()
     print("[Seed] Sample data seeded successfully!")
-    print("    Admin    -> username: admin   | password: admin123")
+    print("    Admin    -> username: manager  | password: admin123")
     print("    Employee -> username: alice   | password: alice123")
     print("    Employee -> username: bob     | password: bob123")
 
