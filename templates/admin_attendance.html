@@ -172,60 +172,7 @@
                 <i class="bi bi-pencil-fill"></i>
               </button>
             </td>
-          </tr>
-
-          <!-- Edit Modal for this record -->
-          <div class="modal fade" id="editModal{{ rec.attendance_id }}" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-              <div class="modal-content modal-custom">
-                <div class="modal-header modal-header-custom">
-                  <h5 class="modal-title">
-                    <i class="bi bi-pencil-fill me-2"></i>Edit — {{ rec.employee.full_name }}
-                  </h5>
-                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                  <form method="POST" action="{{ url_for('admin.edit_attendance', attendance_id=rec.attendance_id) }}"
-                        id="editForm{{ rec.attendance_id }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="row g-3">
-                      <div class="col-6">
-                        <label class="form-label fw-semibold">Check-In Time</label>
-                        <input type="time" name="check_in_time" class="form-control"
-                               value="{{ rec.check_in_time.strftime('%H:%M') if rec.check_in_time else '' }}">
-                      </div>
-                      <div class="col-6">
-                        <label class="form-label fw-semibold">Check-Out Time</label>
-                        <input type="time" name="check_out_time" class="form-control"
-                               value="{{ rec.check_out_time.strftime('%H:%M') if rec.check_out_time else '' }}">
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label fw-semibold">Status Override</label>
-                        <select name="status" class="form-select">
-                          {% for opt in ['On Time', 'Late', 'Half Day', 'Absent'] %}
-                          <option value="{{ opt }}" {% if rec.status == opt %}selected{% endif %}>{{ opt }}</option>
-                          {% endfor %}
-                        </select>
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label fw-semibold">Manager Notes</label>
-                        <input type="text" name="notes" class="form-control" maxlength="255"
-                               placeholder="Optional note…"
-                               value="{{ rec.notes or '' }}">
-                      </div>
-                    </div>
-                  </form>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                  <button type="submit" form="editForm{{ rec.attendance_id }}" class="btn btn-primary">
-                    <i class="bi bi-save me-1"></i>Save Changes
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
+          </tr>          {% endfor %}
         </tbody>
       </table>
     </div>
@@ -266,5 +213,61 @@
     </div>
   </div>
 </div>
+{% endif %}
+
+<!-- Edit Modals (Rendered outside the table to prevent HTML validation & overflow clipping issues) -->
+{% if records %}
+  {% for rec in records %}
+  <div class="modal fade" id="editModal{{ rec.attendance_id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-custom">
+        <div class="modal-header modal-header-custom">
+          <h5 class="modal-title">
+            <i class="bi bi-pencil-fill me-2"></i>Edit — {{ rec.employee.full_name }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form method="POST" action="{{ url_for('admin.edit_attendance', attendance_id=rec.attendance_id) }}"
+                id="editForm{{ rec.attendance_id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label fw-semibold">Check-In Time</label>
+                <input type="time" name="check_in_time" class="form-control"
+                       value="{{ rec.check_in_time.strftime('%H:%M') if rec.check_in_time else '' }}">
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-semibold">Check-Out Time</label>
+                <input type="time" name="check_out_time" class="form-control"
+                       value="{{ rec.check_out_time.strftime('%H:%M') if rec.check_out_time else '' }}">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Status Override</label>
+                <select name="status" class="form-select">
+                  {% for opt in ['On Time', 'Late', 'Half Day', 'Absent'] %}
+                  <option value="{{ opt }}" {% if rec.status == opt %}selected{% endif %}>{{ opt }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Manager Notes</label>
+                <input type="text" name="notes" class="form-control" maxlength="255"
+                       placeholder="Optional note…"
+                       value="{{ rec.notes or '' }}">
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" form="editForm{{ rec.attendance_id }}" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 {% endif %}
 {% endblock %}
