@@ -139,3 +139,28 @@ class EditProfileForm(FlaskForm):
     email        = StringField('Email',        validators=[DataRequired(), Email()])
     phone_number = StringField('Phone Number', validators=[Optional(), Length(max=20)])
     submit       = SubmitField('Update Profile')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PASSWORD / USERNAME RECOVERY FORMS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ForgotUsernameForm(FlaskForm):
+    """Form to request username recovery."""
+    email  = StringField('Email Address', validators=[DataRequired(), Email()])
+    submit = SubmitField('Recover Username')
+
+
+class ForgotPasswordRequestForm(FlaskForm):
+    """Form to request password reset link."""
+    email  = StringField('Email Address', validators=[DataRequired(), Email()])
+    submit = SubmitField('Request Password Reset')
+
+
+class ResetPasswordForm(FlaskForm):
+    """Form to reset password using a secure token."""
+    password    = PasswordField('New Password', validators=[DataRequired(), Length(min=6)])
+    confirm_pwd = PasswordField('Confirm New Password',
+                                validators=[DataRequired(), EqualTo('password', message='Passwords must match')])
+    submit      = SubmitField('Reset Password')
+

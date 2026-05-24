@@ -986,3 +986,39 @@ code.text-primary { background: var(--primary-light); padding: 2px 8px; border-r
   justify-content: center;
 }
 
+
+/* ═══════════════════════════════════════════════════════════
+   DEMO RECOVERY CARD
+   ═══════════════════════════════════════════════════════════ */
+.demo-recovery-card {
+  background: linear-gradient(135deg, #fef08a 0%, #fef9c3 100%);
+  border: 1px solid #facc15;
+  border-radius: 12px;
+  color: #854d0e;
+  padding: 16px;
+  margin-top: 20px;
+  font-size: 14px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  animation: fadeInUp .4s ease both;
+}
+
+.demo-recovery-card code {
+  background: #fef08a;
+  border: 1px solid #ca8a04;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: bold;
+  color: #a16207;
+  display: inline-block;
+  margin-top: 4px;
+  word-break: break-all;
+}
+
+.hover-primary:hover {
+  color: var(--primary) !important;
+  text-decoration: underline !important;
+}
+
+

@@ -6,9 +6,12 @@ Each class represents one database table.
 """
 
 from datetime import datetime
+from flask import current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from itsdangerous import URLSafeTimedSerializer as Serializer
+
 
 # Create the SQLAlchemy db object (will be linked to the Flask app in app.py)
 db = SQLAlchemy()
@@ -52,8 +55,25 @@ class User(UserMixin, db.Model):
         """Return True if the given password matches the stored hash."""
         return check_password_hash(self.password_hash, password)
 
+    # ─── Password reset token helpers ────────────────────────────────────────
+    def get_reset_token(self):
+        """Generate a secure, signed timed token for password resets."""
+        s = Serializer(current_app.config['SECRET_KEY'])
+        return s.dumps({'user_id': self.user_id}, salt='password-reset-salt')
+
+    @staticmethod
+    def verify_reset_token(token, expires_sec=1800):
+        """Verify the password reset token and return the user if valid."""
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token, salt='password-reset-salt', max_age=expires_sec)
+        except Exception:
+            return None
+        return User.query.get(data.get('user_id'))
+
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -338,6 +338,65 @@ class LeaveSystemTestCase(unittest.TestCase):
         response = self.client.get('/employee/apply-leave', follow_redirects=True)
         self.assertIn(b'Access denied', response.data)
 
+    def test_password_reset_token(self):
+        """Verify token generation and verification logic."""
+        user = User.query.filter_by(username='test_alice').first()
+        token = user.get_reset_token()
+        self.assertIsNotNone(token)
+
+        verified_user = User.verify_reset_token(token)
+        self.assertEqual(verified_user.user_id, user.user_id)
+
+    def test_forgot_username_route(self):
+        """Verify forgot username endpoint correctly displays recovered username."""
+        # 1. GET page
+        response = self.client.get('/forgot-username')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Recover Username', response.data)
+
+        # 2. POST valid email
+        response = self.client.post('/forgot-username', data={
+            'email': 'alice@test.com'
+        }, follow_redirects=True)
+        self.assertIn(b'Recovery email simulated successfully', response.data)
+        self.assertIn(b'test_alice', response.data)
+
+        # 3. POST invalid email
+        response = self.client.post('/forgot-username', data={
+            'email': 'nonexistent@test.com'
+        }, follow_redirects=True)
+        self.assertIn(b'No account associated with that email was found', response.data)
+
+    def test_forgot_password_and_reset_route(self):
+        """Verify forgot password link generation and reset workflow."""
+        # 1. POST valid email to request reset link
+        response = self.client.post('/forgot-password', data={
+            'email': 'alice@test.com'
+        }, follow_redirects=True)
+        self.assertIn(b'Password reset link generated successfully', response.data)
+        self.assertIn(b'/reset-password/', response.data)
+
+        # Extract token from response to simulate user clicking link
+        user = User.query.filter_by(email='alice@test.com').first()
+        token = user.get_reset_token()
+
+        # 2. GET reset page with valid token
+        response = self.client.get(f'/reset-password/{token}')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Choose New Password', response.data)
+
+        # 3. POST new password
+        response = self.client.post(f'/reset-password/{token}', data={
+            'password': 'newalicepwd',
+            'confirm_pwd': 'newalicepwd'
+        }, follow_redirects=True)
+        self.assertIn(b'Your password has been reset successfully', response.data)
+
+        # 4. Confirm new password works for login
+        response = self.login('test_alice', 'newalicepwd')
+        self.assertIn(b'Welcome back', response.data)
+
 
 if __name__ == '__main__':
     unittest.main()
+

@@ -11,7 +11,7 @@ Handles:
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User, Employee
-from forms import LoginForm, RegisterForm
+from forms import LoginForm, RegisterForm, ForgotUsernameForm, ForgotPasswordRequestForm, ResetPasswordForm
 from datetime import date
 
 # Create a Blueprint named 'auth'
@@ -134,3 +134,83 @@ def logout():
     logout_user()
     flash('You have been logged out successfully.', 'info')
     return redirect(url_for('auth.login'))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FORGOT USERNAME
+# ─────────────────────────────────────────────────────────────────────────────
+@auth_bp.route('/forgot-username', methods=['GET', 'POST'])
+def forgot_username():
+    """Look up a username by email and simulate/display it."""
+    if current_user.is_authenticated:
+        return redirect(url_for('auth.index'))
+
+    form = ForgotUsernameForm()
+    recovered_username = None
+    email_submitted = None
+
+    if form.validate_on_submit():
+        email = form.email.data.strip()
+        user = User.query.filter_by(email=email).first()
+        if user:
+            recovered_username = user.username
+            email_submitted = email
+            flash("Recovery email simulated successfully! See preview below.", "success")
+        else:
+            flash("No account associated with that email was found.", "danger")
+
+    return render_template('forgot_username.html', form=form, title='Recover Username',
+                           recovered_username=recovered_username, email=email_submitted)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FORGOT PASSWORD REQUEST
+# ─────────────────────────────────────────────────────────────────────────────
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Request a password reset link and simulate/display it."""
+    if current_user.is_authenticated:
+        return redirect(url_for('auth.index'))
+
+    form = ForgotPasswordRequestForm()
+    demo_reset_link = None
+    email_submitted = None
+
+    if form.validate_on_submit():
+        email = form.email.data.strip()
+        user = User.query.filter_by(email=email).first()
+        if user:
+            token = user.get_reset_token()
+            demo_reset_link = url_for('auth.reset_password', token=token, _external=True)
+            email_submitted = email
+            flash("Password reset link generated successfully! Click the button below.", "success")
+        else:
+            flash("No account associated with that email was found.", "danger")
+
+    return render_template('forgot_password.html', form=form, title='Forgot Password',
+                           demo_reset_link=demo_reset_link, email=email_submitted)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RESET PASSWORD
+# ─────────────────────────────────────────────────────────────────────────────
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Verify reset token and let user set a new password."""
+    if current_user.is_authenticated:
+        return redirect(url_for('auth.index'))
+
+    user = User.verify_reset_token(token)
+    if not user:
+        flash("The password reset link is invalid, expired, or has already been used.", "danger")
+        return redirect(url_for('auth.forgot_password'))
+
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        user.set_password(form.password.data)
+        db.session.commit()
+        flash("Your password has been reset successfully! You can now log in.", "success")
+        return redirect(url_for('auth.login'))
+
+    return render_template('reset_password.html', form=form, user=user, token=token, title='Reset Password')
+
