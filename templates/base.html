@@ -120,10 +120,20 @@
     <div class="sidebar-footer">
       <div class="sidebar-user">
         <div class="user-avatar">
-          {{ current_user.username[0].upper() }}
+          {% if current_user.role == 'employee' and current_user.employee %}
+            {{ current_user.employee.full_name[0].upper() }}
+          {% else %}
+            {{ current_user.username[0].upper() }}
+          {% endif %}
         </div>
         <div class="user-info">
-          <span class="user-name">{{ current_user.username }}</span>
+          <span class="user-name">
+            {% if current_user.role == 'employee' and current_user.employee %}
+              {{ current_user.employee.full_name }}
+            {% else %}
+              {{ current_user.username | capitalize }}
+            {% endif %}
+          </span>
           <span class="user-role badge-role-{{ current_user.role }}">
             {{ current_user.role | capitalize }}
           </span>

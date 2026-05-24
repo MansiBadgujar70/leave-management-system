@@ -263,10 +263,12 @@ body {
 
 .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 
-.stat-card-primary  { background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%); }
-.stat-card-success  { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
-.stat-card-warning  { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); }
-.stat-card-danger   { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); }
+.stat-card-primary  { background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%); } /* Violet-Blue */
+.stat-card-success  { background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); } /* Cyan-Blue */
+.stat-card-warning  { background: linear-gradient(135deg, #f97316 0%, #ec4899 100%); } /* Orange-Pink */
+.stat-card-danger   { background: linear-gradient(135deg, #ef4444 0%, #f43f5e 100%); } /* Crimson-Pink */
+.stat-card-info     { background: linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%); } /* Magenta-Violet */
+
 
 .stat-icon {
   font-size: 36px;
@@ -913,10 +915,7 @@ code.text-primary { background: var(--primary-light); padding: 2px 8px; border-r
 .card-custom { animation: fadeInUp .4s ease both; }
 .stat-card   { animation: fadeInUp .35s ease both; }
 
-/* ═══════════════════════════════════════════════════════════
-   INFO STAT CARD (teal)
-   ═══════════════════════════════════════════════════════════ */
-.stat-card-info { background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%); }
+
 
 /* ═══════════════════════════════════════════════════════════
    ATTENDANCE WIDGET
