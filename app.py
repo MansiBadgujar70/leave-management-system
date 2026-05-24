@@ -11,7 +11,7 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from config import Config
-from models import db, User
+from models import db, User, get_ist_today
 from datetime import date
 from dotenv import load_dotenv
 
@@ -75,7 +75,7 @@ def create_app():
     @app.context_processor
     def inject_today():
         """Make today's date available in every template."""
-        return {'today': date.today()}
+        return {'today': get_ist_today()}
 
     # ── Custom Error Handlers ────────────────────────────────────────────────
     from flask import render_template

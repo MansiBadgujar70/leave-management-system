@@ -16,7 +16,7 @@ from flask import (Blueprint, render_template, redirect, url_for,
                    flash, request, jsonify)
 from flask_login import login_required, current_user
 from functools import wraps
-from models import db, Employee, LeaveRequest, Attendance
+from models import db, Employee, LeaveRequest, Attendance, get_ist_now, get_ist_today
 from forms import ApplyLeaveForm, EditProfileForm
 from datetime import date, timedelta, datetime, time
 
@@ -71,18 +71,18 @@ def dashboard():
                      .limit(5).all())
 
     # Today's attendance record
+    today_val = get_ist_today()
     today_attendance = Attendance.query.filter_by(
         employee_id=employee.employee_id,
-        date=date.today()
+        date=today_val
     ).first()
 
     # Monthly attendance summary (current month)
-    from datetime import date as dt_date
-    first_of_month = date.today().replace(day=1)
+    first_of_month = today_val.replace(day=1)
     monthly_records = Attendance.query.filter(
         Attendance.employee_id == employee.employee_id,
         Attendance.date >= first_of_month,
-        Attendance.date <= date.today()
+        Attendance.date <= today_val
     ).all()
     monthly_present  = sum(1 for a in monthly_records if a.status in ('On Time', 'Late', 'Half Day'))
     monthly_late     = sum(1 for a in monthly_records if a.status == 'Late')
@@ -285,8 +285,9 @@ def check_in():
       - Only one check-in per day allowed
     """
     employee = get_current_employee()
-    today    = date.today()
-    now_time = datetime.now().time()
+    ist_now  = get_ist_now()
+    today    = ist_now.date()
+    now_time = ist_now.time()
 
     # Check if already checked in today
     existing = Attendance.query.filter_by(employee_id=employee.employee_id, date=today).first()
@@ -342,8 +343,9 @@ def check_out():
     Half Day: < 4 hours worked.
     """
     employee = get_current_employee()
-    today    = date.today()
-    now_time = datetime.now().time()
+    ist_now  = get_ist_now()
+    today    = ist_now.date()
+    now_time = ist_now.time()
 
     record = Attendance.query.filter_by(employee_id=employee.employee_id, date=today).first()
 

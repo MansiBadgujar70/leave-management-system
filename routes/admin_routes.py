@@ -22,7 +22,7 @@ from flask import (Blueprint, render_template, redirect, url_for,
                    flash, request, abort, jsonify)
 from flask_login import login_required, current_user
 from functools import wraps
-from models import db, User, Employee, LeaveRequest, Attendance
+from models import db, User, Employee, LeaveRequest, Attendance, get_ist_today, get_ist_now
 from forms import AddEmployeeForm, AddAdminForm, EditEmployeeForm, AdminRemarkForm
 from datetime import date, datetime
 
@@ -79,7 +79,7 @@ def dashboard():
     dept_counts  = [d[1] for d in dept_data]
 
     # Today's attendance summary
-    today = date.today()
+    today = get_ist_today()
     today_records    = Attendance.query.filter_by(date=today).all()
     today_present    = sum(1 for a in today_records if a.status in ('On Time', 'Late', 'Half Day'))
     today_late       = sum(1 for a in today_records if a.status == 'Late')
@@ -403,14 +403,14 @@ def manage_attendance():
     Admin view of all employee attendance.
     Filters: ?date=YYYY-MM-DD, ?dept=HR, ?status=Late
     """
-    filter_date   = request.args.get('date', date.today().strftime('%Y-%m-%d'))
+    filter_date   = request.args.get('date', get_ist_today().strftime('%Y-%m-%d'))
     filter_dept   = request.args.get('dept', '')
     filter_status = request.args.get('status', '')
 
     try:
         view_date = datetime.strptime(filter_date, '%Y-%m-%d').date()
     except ValueError:
-        view_date = date.today()
+        view_date = get_ist_today()
 
     query = (db.session.query(Attendance)
              .join(Employee)

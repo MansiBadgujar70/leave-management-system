@@ -5,12 +5,24 @@ Defines the SQLAlchemy ORM models (Python classes → MySQL tables).
 Each class represents one database table.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta, date, time
+
+def get_ist_now():
+    """Return the current datetime in Indian Standard Time (IST)."""
+    utc_now = datetime.now(timezone.utc)
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
+    return utc_now.astimezone(ist_tz)
+
+def get_ist_today():
+    """Return the current date in Indian Standard Time (IST)."""
+    return get_ist_now().date()
+
 from flask import current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer as Serializer
+
 
 
 # Create the SQLAlchemy db object (will be linked to the Flask app in app.py)
