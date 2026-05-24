@@ -12,7 +12,7 @@
       <i class="bi bi-house-fill me-2 text-primary"></i>My Dashboard
     </h2>
     <p class="page-subtitle text-muted">
-      Welcome, <strong>{{ employee.full_name }}</strong> &nbsp;|&nbsp;
+      Welcome, <strong>{% if employee.full_name and employee.full_name|length > 2 %}{{ employee.full_name }}{% else %}{{ current_user.username | capitalize }}{% endif %}</strong> &nbsp;|&nbsp;
       <span class="badge dept-badge">{{ employee.department }}</span>
       &nbsp;|&nbsp; <small class="text-muted" id="liveClock"></small>
     </p>

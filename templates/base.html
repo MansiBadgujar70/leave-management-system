@@ -120,7 +120,7 @@
     <div class="sidebar-footer">
       <div class="sidebar-user">
         <div class="user-avatar">
-          {% if current_user.role == 'employee' and current_user.employee %}
+          {% if current_user.role == 'employee' and current_user.employee and current_user.employee.full_name|length > 2 %}
             {{ current_user.employee.full_name[0].upper() }}
           {% else %}
             {{ current_user.username[0].upper() }}
@@ -128,7 +128,7 @@
         </div>
         <div class="user-info">
           <span class="user-name">
-            {% if current_user.role == 'employee' and current_user.employee %}
+            {% if current_user.role == 'employee' and current_user.employee and current_user.employee.full_name|length > 2 %}
               {{ current_user.employee.full_name }}
             {% else %}
               {{ current_user.username | capitalize }}

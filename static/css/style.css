@@ -68,7 +68,7 @@ body {
 .sidebar {
   width: var(--sidebar-width);
   min-height: 100vh;
-  background: linear-gradient(180deg, var(--bg-sidebar) 0%, var(--bg-sidebar-2) 100%);
+  background: var(--bg-sidebar);
   padding: 0;
   position: fixed;
   top: 0; left: 0; bottom: 0;
