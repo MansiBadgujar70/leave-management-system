@@ -53,14 +53,15 @@ def create_app():
         """Tell Flask-Login how to reload a user from the session."""
         return User.query.get(int(user_id))
 
-    # ── Register Blueprints (route modules) ────────────────────────────────────
     from routes.auth_routes     import auth_bp
     from routes.admin_routes    import admin_bp
     from routes.employee_routes import employee_bp
+    from routes.chat_routes     import chat_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp,    url_prefix='/admin')
     app.register_blueprint(employee_bp, url_prefix='/employee')
+    app.register_blueprint(chat_bp)
 
     # ── Jinja2 global helpers ──────────────────────────────────────────────────
     @app.template_filter('dateformat')
@@ -73,9 +74,13 @@ def create_app():
         return value.strftime(fmt)
 
     @app.context_processor
-    def inject_today():
-        """Make today's date available in every template."""
-        return {'today': get_ist_today()}
+    def inject_globals():
+        """Make today's date and Message model available globally in templates."""
+        from models import Message
+        return {
+            'today': get_ist_today(),
+            'Message': Message
+        }
 
     # ── Custom Error Handlers ────────────────────────────────────────────────
     from flask import render_template

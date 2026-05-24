@@ -75,6 +75,21 @@
             <span>Attendance</span>
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link sidebar-link {% if request.endpoint == 'chat.index' %}active{% endif %}"
+             href="{{ url_for('chat.index') }}">
+            <i class="bi bi-chat-dots-fill"></i>
+            <span class="d-flex align-items-center justify-content-between w-100">
+              <span>Chat</span>
+              {% if current_user.is_authenticated %}
+                {% set unread = Message.query.filter_by(recipient_id=current_user.user_id, is_read=False).count() %}
+                {% if unread > 0 %}
+                  <span class="badge bg-danger rounded-pill px-2 py-1" style="font-size: 10px; line-height: 1;">{{ unread }}</span>
+                {% endif %}
+              {% endif %}
+            </span>
+          </a>
+        </li>
 
       {% else %}
         <!-- EMPLOYEE NAVIGATION -->
@@ -111,6 +126,21 @@
              href="{{ url_for('employee.profile') }}">
             <i class="bi bi-person-circle"></i>
             <span>My Profile</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link sidebar-link {% if request.endpoint == 'chat.index' %}active{% endif %}"
+             href="{{ url_for('chat.index') }}">
+            <i class="bi bi-chat-dots-fill"></i>
+            <span class="d-flex align-items-center justify-content-between w-100">
+              <span>Chat</span>
+              {% if current_user.is_authenticated %}
+                {% set unread = Message.query.filter_by(recipient_id=current_user.user_id, is_read=False).count() %}
+                {% if unread > 0 %}
+                  <span class="badge bg-danger rounded-pill px-2 py-1" style="font-size: 10px; line-height: 1;">{{ unread }}</span>
+                {% endif %}
+              {% endif %}
+            </span>
           </a>
         </li>
       {% endif %}

@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- ════════════════════════════════════════════════════════════════
+     WORKSPACE CHAT SYSTEM — Slack/Discord-style Premium Interface
+     ════════════════════════════════════════════════════════════════ -->
+<div class="chat-container">
+  
+  <!-- LEFT PANEL: Contacts Directory -->
+  <div class="chat-sidebar">
+    <div class="chat-sidebar-header">
+      <h5 class="mb-1 fw-bold text-dark"><i class="bi bi-chat-fill me-2 text-primary"></i>Workspace Chat</h5>
+      <p class="text-muted small mb-0">Connect with employees & managers</p>
+    </div>
+    
+    <!-- Contacts Scroll Container -->
+    <div class="chat-contacts-scroll">
+      
+      <!-- Section 1: Managers & HR -->
+      <div class="chat-section-label">Managers & Admins</div>
+      <div class="chat-contacts-list">
+        {% for admin in admins %}
+          <div class="contact-item" data-user-id="{{ admin.user_id }}" onclick="selectContact({{ admin.user_id }})">
+            <div class="contact-avatar admin">
+              {{ admin.initial }}
+            </div>
+            <div class="contact-info">
+              <div class="contact-header">
+                <span class="contact-name">{{ admin.display_name }}</span>
+                <span class="badge bg-danger rounded-pill unread-badge {% if admin.unread_count == 0 %}d-none{% endif %}" id="unread-{{ admin.user_id }}">
+                  {{ admin.unread_count }}
+                </span>
+              </div>
+              <div class="contact-sub text-truncate">Administration</div>
+            </div>
+          </div>
+        {% else %}
+          <div class="text-center py-3 text-muted small">No managers found.</div>
+        {% endfor %}
+      </div>
+      
+      <!-- Section 2: Employees -->
+      <div class="chat-section-label mt-4">Employees</div>
+      <div class="chat-contacts-list">
+        {% for emp in employees %}
+          <div class="contact-item" data-user-id="{{ emp.user_id }}" onclick="selectContact({{ emp.user_id }})">
+            <div class="contact-avatar">
+              {{ emp.initial }}
+            </div>
+            <div class="contact-info">
+              <div class="contact-header">
+                <span class="contact-name">{{ emp.display_name }}</span>
+                <span class="badge bg-danger rounded-pill unread-badge {% if emp.unread_count == 0 %}d-none{% endif %}" id="unread-{{ emp.user_id }}">
+                  {{ emp.unread_count }}
+                </span>
+              </div>
+              <div class="contact-sub text-truncate">{{ emp.department }} Department</div>
+            </div>
+          </div>
+        {% else %}
+          <div class="text-center py-3 text-muted small">No other employees found.</div>
+        {% endfor %}
+      </div>
+      
+    </div>
+  </div>
+  
+  <!-- RIGHT PANEL: Chat Window -->
+  <div class="chat-window">
+    
+    <!-- EMPTY STATE (Before selecting a contact) -->
+    <div class="chat-empty-state" id="chatEmptyState">
+      <div class="chat-empty-icon">
+        <i class="bi bi-chat-right-heart-fill"></i>
+      </div>
+      <h4>Workspace Messaging</h4>
+      <p class="text-muted">Select a colleague or manager from the left sidebar directory to start communicating in real time.</p>
+    </div>
+    
+    <!-- ACTIVE CHAT VIEW -->
+    <div class="chat-active-view d-none" id="chatActiveView">
+      
+      <!-- Active Chat Header -->
+      <div class="chat-header">
+        <div class="d-flex align-items-center gap-3">
+          <div class="active-avatar" id="activeAvatar">A</div>
+          <div>
+            <h6 class="mb-0 fw-bold" id="activeName">Active Colleague</h6>
+            <small class="text-muted" id="activeSub">IT Department</small>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Scrollable Chat Messages Pane -->
+      <div class="chat-messages-pane" id="chatMessagesPane">
+        <!-- Dynamic Chat Bubbles go here -->
+      </div>
+      
+      <!-- Typing Bar / Input Footer -->
+      <div class="chat-input-bar">
+        <form id="sendMessageForm" onsubmit="event.preventDefault(); sendMessage();" class="d-flex gap-2 w-100">
+          <div class="input-group">
+            <input type="text" class="form-control" id="messageInput" placeholder="Type a secure message..." autocomplete="off" required>
+            <button type="submit" class="btn btn-primary btn-send-message">
+              <i class="bi bi-send-fill"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+      
+    </div>
+    
+  </div>
+  
+</div>
+
+<!-- CSRF Token Injector for JavaScript AJAX Calls -->
+<input type="hidden" id="csrf_token_js" value="{{ csrf_token() }}">
+
+<!-- real-time Polling & UI Interaction JavaScript -->
+<script>
+  let activeUserId = null;
+  let pollingInterval = null;
+  const currentUserId = {{ current_user.user_id }};
+  
+  function selectContact(userId) {
+    activeUserId = userId;
+    
+    // Highlight active list item
+    document.querySelectorAll('.contact-item').forEach(item => {
+      if (parseInt(item.getAttribute('data-user-id')) === userId) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+    
+    // Show active panel, hide empty state
+    document.getElementById('chatEmptyState').classList.add('d-none');
+    document.getElementById('chatActiveView').classList.remove('d-none');
+    
+    // Hide unread badge locally
+    const badge = document.getElementById(`unread-${userId}`);
+    if (badge) {
+      badge.classList.add('d-none');
+      badge.textContent = '0';
+    }
+    
+    // Fetch conversation logs immediately
+    loadHistory(userId, true);
+    
+    // Setup polling (Every 4 seconds)
+    if (pollingInterval) clearInterval(pollingInterval);
+    pollingInterval = setInterval(() => {
+      if (activeUserId === userId) {
+        loadHistory(userId, false);
+      }
+    }, 4000);
+  }
+  
+  function loadHistory(userId, shouldScroll) {
+    fetch(`/chat/history/${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          // Render header details
+          document.getElementById('activeName').textContent = data.partner.display_name;
+          document.getElementById('activeSub').textContent = `${data.partner.role} | ${data.partner.department}`;
+          
+          const avatar = document.getElementById('activeAvatar');
+          avatar.textContent = data.partner.display_name[0].upperCase ? data.partner.display_name[0].upperCase() : data.partner.display_name[0].toUpperCase();
+          if (data.partner.role === 'Admin') {
+            avatar.classList.add('admin');
+          } else {
+            avatar.classList.remove('admin');
+          }
+          
+          // Render bubble history
+          const pane = document.getElementById('chatMessagesPane');
+          
+          // Check if user has scrolled up; if so, don't force auto-scroll
+          const isAtBottom = pane.scrollHeight - pane.clientHeight <= pane.scrollTop + 50;
+          
+          let html = '';
+          let lastDate = '';
+          
+          data.messages.forEach(msg => {
+            // Render date divider if new day
+            if (msg.date !== lastDate) {
+              html += `<div class="chat-date-divider"><span>${msg.date}</span></div>`;
+              lastDate = msg.date;
+            }
+            
+            const isOutgoing = msg.sender_id === currentUserId;
+            
+            html += `
+              <div class="chat-bubble-wrapper ${isOutgoing ? 'outgoing' : 'incoming'}">
+                <div class="chat-bubble">
+                  <div class="chat-bubble-content">${escapeHTML(msg.content)}</div>
+                  <div class="chat-bubble-time">${msg.timestamp}</div>
+                </div>
+              </div>
+            `;
+          });
+          
+          if (data.messages.length === 0) {
+            html = `
+              <div class="text-center py-5 text-muted">
+                <i class="bi bi-chat-square-quote-fill display-4 opacity-25"></i>
+                <p class="mt-2 small">No messages yet. Send a message to start the conversation!</p>
+              </div>
+            `;
+          }
+          
+          pane.innerHTML = html;
+          
+          // Force scroll or maintain scroll
+          if (shouldScroll || isAtBottom) {
+            pane.scrollTop = pane.scrollHeight;
+          }
+        }
+      });
+  }
+  
+  function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const content = input.value.trim();
+    if (!content || !activeUserId) return;
+    
+    input.value = '';
+    
+    const csrfToken = document.getElementById('csrf_token_js').value;
+    
+    // Post to send API
+    fetch('/chat/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({
+        recipient_id: activeUserId,
+        content: content
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        // Instantly load history to display bubble
+        loadHistory(activeUserId, true);
+      } else {
+        alert('Failed to send message: ' + data.message);
+      }
+    });
+  }
+  
+  function escapeHTML(str) {
+    return str.replace(/[&<>'"]/g, 
+      tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag)
+    );
+  }
+</script>
+{% endblock %}

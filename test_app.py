@@ -396,7 +396,56 @@ class LeaveSystemTestCase(unittest.TestCase):
         response = self.login('test_alice', 'newalicepwd')
         self.assertIn(b'Welcome back', response.data)
 
+    def test_chat_system_flow(self):
+        """Verify message creation, JSON history retrieval, and read state updates."""
+        # Log in as test employee Alice
+        self.login('test_alice', 'alicepwd')
+
+        # 1. GET Chat Workspace index page
+        response = self.client.get('/chat')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Workspace Chat', response.data)
+        self.assertIn(b'Test_admin', response.data)  # Should list admin in directory
+
+        # Get user records to map IDs
+        alice = User.query.filter_by(username='test_alice').first()
+        admin = User.query.filter_by(username='test_admin').first()
+
+        # 2. POST Message to admin
+        response = self.client.post('/chat/send', json={
+            'recipient_id': admin.user_id,
+            'content': 'Hello Admin! This is a test message.'
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['message']['content'], 'Hello Admin! This is a test message.')
+
+        # Log out Alice, log in Admin
+        self.client.get('/logout', follow_redirects=True)
+        self.login('test_admin', 'adminpwd')
+
+        # 3. Verify Admin has 1 unread message on index page
+        response = self.client.get('/chat')
+        self.assertEqual(response.status_code, 200)
+        # Unread badge indicator for Alice's user id should contain '1' unread count
+        self.assertIn(f'id="unread-{alice.user_id}"'.encode(), response.data)
+
+        # 4. Fetch history between Admin and Alice (should mark message as read)
+        response = self.client.get(f'/chat/history/{alice.user_id}')
+        self.assertEqual(response.status_code, 200)
+        history_data = response.get_json()
+        self.assertEqual(history_data['status'], 'success')
+        self.assertTrue(len(history_data['messages']) >= 1)
+        self.assertEqual(history_data['messages'][0]['content'], 'Hello Admin! This is a test message.')
+
+        # 5. Verify unread status has changed to True (read) in DB
+        from models import Message
+        msg = Message.query.get(data['message']['message_id'])
+        self.assertTrue(msg.is_read)
+
 
 if __name__ == '__main__':
     unittest.main()
+
 

@@ -222,3 +222,28 @@ class Attendance(db.Model):
 
     def __repr__(self):
         return f'<Attendance emp={self.employee_id} date={self.date} status={self.status}>'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE 5 : messages
+# Stores peer-to-peer and employee-manager chat messages
+# ─────────────────────────────────────────────────────────────────────────────
+class Message(db.Model):
+    """
+    Represents a workspace message between two users.
+    """
+    __tablename__ = 'messages'
+
+    message_id   = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    sender_id    = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
+    content      = db.Column(db.Text, nullable=False)
+    timestamp    = db.Column(db.DateTime, nullable=False, default=get_ist_now)
+    is_read      = db.Column(db.Boolean, nullable=False, default=False)
+
+    # Relationships
+    sender    = db.relationship('User', foreign_keys=[sender_id], backref=db.backref('sent_messages', lazy='dynamic', cascade='all, delete-orphan'))
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref=db.backref('received_messages', lazy='dynamic', cascade='all, delete-orphan'))
+
+    def __repr__(self):
+        return f'<Message id={self.message_id} from={self.sender_id} to={self.recipient_id}>'
