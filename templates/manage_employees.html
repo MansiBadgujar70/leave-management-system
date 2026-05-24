@@ -14,10 +14,15 @@
       Total <strong>{{ employees | length }}</strong> employee(s) found.
     </p>
   </div>
-  <!-- Add Employee Button (opens modal) -->
-  <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
-    <i class="bi bi-person-plus-fill me-2"></i>Add Employee
-  </button>
+  <!-- Action Buttons -->
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-danger btn-lg" data-bs-toggle="modal" data-bs-target="#addAdminModal">
+      <i class="bi bi-shield-lock-fill me-2"></i>Add Admin
+    </button>
+    <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+      <i class="bi bi-person-plus-fill me-2"></i>Add Employee
+    </button>
+  </div>
 </div>
 
 <!-- ── SEARCH BAR ─────────────────────────────────────────────────────────── -->
@@ -186,6 +191,53 @@
 <form id="deleteForm" method="POST" style="display:none;">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 </form>
+
+<!-- ════════════════════════════════════════════════
+     ADD ADMIN MODAL
+     ════════════════════════════════════════════════ -->
+<div class="modal fade" id="addAdminModal" tabindex="-1" aria-labelledby="addAdminModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-custom">
+      <div class="modal-header" style="background: linear-gradient(135deg, #dc3545, #b02a37); border-radius: 12px 12px 0 0;">
+        <h5 class="modal-title text-white" id="addAdminModalLabel">
+          <i class="bi bi-shield-lock-fill me-2"></i>Create New Admin Account
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
+          <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+          <div>
+            <strong>Admin accounts have full access</strong> to all employee data, leave approvals, and system settings. Only create accounts for trusted team members.
+          </div>
+        </div>
+        <form method="POST" action="{{ url_for('admin.add_admin') }}" id="addAdminForm">
+          {{ admin_form.hidden_tag() }}
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-semibold">Username *</label>
+              {{ admin_form.username(class="form-control", placeholder="e.g. hr_admin") }}
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Email *</label>
+              {{ admin_form.email(class="form-control", placeholder="admin@company.com") }}
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Password *</label>
+              {{ admin_form.password(class="form-control", placeholder="Min 6 characters") }}
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" form="addAdminForm" class="btn btn-danger">
+          <i class="bi bi-shield-check me-1"></i>Create Admin
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 function confirmDelete(empId, empName) {

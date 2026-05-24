@@ -8,6 +8,7 @@ Routes:
   GET  /admin/dashboard
   GET  /admin/employees
   POST /admin/employees/add
+  POST /admin/admins/add
   GET  /admin/employees/edit/<id>
   POST /admin/employees/edit/<id>
   POST /admin/employees/delete/<id>
@@ -22,7 +23,7 @@ from flask import (Blueprint, render_template, redirect, url_for,
 from flask_login import login_required, current_user
 from functools import wraps
 from models import db, User, Employee, LeaveRequest
-from forms import AddEmployeeForm, EditEmployeeForm, AdminRemarkForm
+from forms import AddEmployeeForm, AddAdminForm, EditEmployeeForm, AdminRemarkForm
 from datetime import date
 
 admin_bp = Blueprint('admin', __name__)
@@ -115,14 +116,16 @@ def manage_employees():
             )
         )
 
-    employees = query.order_by(Employee.full_name).all()
-    form      = AddEmployeeForm()   # For the "Add Employee" modal
+    employees  = query.order_by(Employee.full_name).all()
+    form       = AddEmployeeForm()   # For the "Add Employee" modal
+    admin_form = AddAdminForm()      # For the "Add Admin" modal
 
     return render_template(
         'manage_employees.html',
         title='Manage Employees',
         employees=employees,
         form=form,
+        admin_form=admin_form,
         search=search
     )
 
@@ -168,6 +171,41 @@ def add_employee():
         flash(f'Employee "{new_emp.full_name}" added successfully!', 'success')
     else:
         # Collect all validation errors and flash them
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f'{field}: {error}', 'danger')
+
+    return redirect(url_for('admin.manage_employees'))
+
+
+@admin_bp.route('/admins/add', methods=['POST'])
+@admin_required
+def add_admin():
+    """Handle the Add Admin form submission. Creates a user with role='admin'."""
+    form = AddAdminForm()
+
+    if form.validate_on_submit():
+        # Check for duplicate username
+        if User.query.filter_by(username=form.username.data.strip()).first():
+            flash('Username already exists. Please choose a different one.', 'danger')
+            return redirect(url_for('admin.manage_employees'))
+
+        # Check for duplicate email
+        if User.query.filter_by(email=form.email.data.strip()).first():
+            flash('Email already registered.', 'danger')
+            return redirect(url_for('admin.manage_employees'))
+
+        # Create admin user account (no Employee profile needed)
+        new_admin = User(
+            username=form.username.data.strip(),
+            email=form.email.data.strip(),
+            role='admin'
+        )
+        new_admin.set_password(form.password.data)
+        db.session.add(new_admin)
+        db.session.commit()
+        flash(f'Admin account "{new_admin.username}" created successfully!', 'success')
+    else:
         for field, errors in form.errors.items():
             for error in errors:
                 flash(f'{field}: {error}', 'danger')

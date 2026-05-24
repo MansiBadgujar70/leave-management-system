@@ -71,6 +71,15 @@ class AddEmployeeForm(FlaskForm):
     submit        = SubmitField('Add Employee')
 
 
+class AddAdminForm(FlaskForm):
+    """Admin form to create a new admin account."""
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)])
+    email    = StringField('Email',    validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
+    submit   = SubmitField('Add Admin')
+
+
+
 class EditEmployeeForm(FlaskForm):
     """Admin form to edit an existing employee's details."""
     full_name     = StringField('Full Name',      validators=[DataRequired(), Length(max=150)])
